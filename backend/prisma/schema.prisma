@@ -1,15 +1,128 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TECNICO
+}
+
+enum ServiceOrderStatus {
+  ABERTA
+  EM_ANALISE
+  AGUARDANDO_APROVACAO
+  EM_MANUTENCAO
+  FINALIZADA
+  ENTREGUE
+  CANCELADA
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(TECNICO)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  serviceOrders ServiceOrder[] @relation("CreatedByUser")
+
+  @@map("users")
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  cpfCnpj   String?
+  rgIe      String?
+  address   String?
+  district  String?
+  city      String?
+  state     String?
+  zipCode   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  devices       Device[]
+  serviceOrders ServiceOrder[]
+
+  @@map("clients")
+}
+
+model Device {
+  id             String   @id @default(cuid())
+  clientId       String
+  type           String   // Ex.: Placa-mae, Notebook, Desktop
+  brand          String?  // Ex.: ASUS
+  model          String?  // Ex.: H310CM-HG4
+  serialNumber   String?  // Numero de serie
+  password       String?  // Senha (se aplicavel)
+  accessories    String?  // Texto livre
+  notes          String?  // Observacoes gerais do equipamento
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceOrders  ServiceOrder[]
+
+  @@index([clientId])
+  @@map("devices")
+}
+
+model ServiceOrder {
+  id                 String             @id @default(cuid())
+  osNumber           Int                @unique @default(autoincrement())
+  clientId           String
+  deviceId           String
+  createdByUserId    String?
+  entryDate          DateTime           @default(now())
+
+  symptoms           String
+  accessories        String?            // Acessorios recebidos nessa entrada (texto da OS)
+  observations       String?            // Observacoes gerais da OS
+
+  status             ServiceOrderStatus @default(ABERTA)
+
+  budgetValue        Decimal?           @db.Decimal(10, 2)
+  finalValue         Decimal?           @db.Decimal(10, 2)
+
+  webKey             String?            @unique
+  trackingPassword   String?
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  client             Client             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  device             Device             @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  createdByUser      User?              @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  history            ServiceOrderHistory[]
+
+  @@index([clientId])
+  @@index([deviceId])
+  @@index([status])
+  @@map("service_orders")
+}
+
+model ServiceOrderHistory {
+  id             String             @id @default(cuid())
+  serviceOrderId String
+  previousStatus ServiceOrderStatus?
+  newStatus      ServiceOrderStatus
+  note           String?
+  createdAt      DateTime           @default(now())
+
+  serviceOrder   ServiceOrder       @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+
+  @@index([serviceOrderId])
+  @@map("service_order_history")
 }
