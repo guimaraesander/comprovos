@@ -1,8 +1,19 @@
 import { NextFunction, Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import { env } from "../config/env";
 
 export type AuthUser = {
   id: string;
   role: "ADMIN" | "TECNICO";
+  email: string;
+  name: string;
+};
+
+type JwtPayload = {
+  sub: string;
+  role: "ADMIN" | "TECNICO";
+  email: string;
+  name: string;
 };
 
 declare global {
@@ -22,11 +33,28 @@ export function ensureAuth(req: Request, res: Response, next: NextFunction) {
     });
   }
 
-  // Stub temporario (M2 vai trocar por JWT real)
-  req.user = {
-    id: "temp-user-id",
-    role: "ADMIN",
-  };
+  const [scheme, token] = authHeader.split(" ");
 
-  return next();
+  if (scheme !== "Bearer" || !token) {
+    return res.status(401).json({
+      message: "Token invalido",
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+
+    req.user = {
+      id: decoded.sub,
+      role: decoded.role,
+      email: decoded.email,
+      name: decoded.name,
+    };
+
+    return next();
+  } catch {
+    return res.status(401).json({
+      message: "Token invalido ou expirado",
+    });
+  }
 }
