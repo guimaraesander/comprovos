@@ -13,7 +13,9 @@ export function AppRouter() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
 
+        {/* Grupo protegido */}
         <Route element={<ProtectedRoute />}>
+          {/* Layout interno */}
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/clients" element={<ClientsPage />} />
@@ -22,6 +24,7 @@ export function AppRouter() {
           </Route>
         </Route>
 
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
