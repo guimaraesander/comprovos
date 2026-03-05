@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 
@@ -22,8 +22,9 @@ export function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ✅ Evita navegar no meio do render com navigate(), usando Navigate é mais seguro
   if (isAuthenticated) {
-    navigate("/", { replace: true });
+    return <Navigate to={redirectTo} replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -33,18 +34,30 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
+      // ✅ Mantém compatibilidade com o seu AuthContext atual
       await login({ email, password });
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const message =
-          (error.response?.data as { message?: string } | undefined)?.message ||
-          "Falha ao realizar login";
-        setErrorMessage(message);
+      // ✅ Sem resposta da API: servidor fora do ar / rede / CORS
+      if (axios.isAxiosError(error) && !error.response) {
+        setErrorMessage("Não foi possível conectar ao servidor.");
+      }
+      // ✅ Erro com resposta da API
+      else if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const apiMessage = (error.response?.data as { message?: string } | undefined)?.message;
+
+        if (status === 401) {
+          setErrorMessage("Email ou senha inválidos.");
+        } else if (status === 400) {
+          setErrorMessage("Dados inválidos. Verifique email e senha.");
+        } else {
+          setErrorMessage(apiMessage || "Falha ao realizar login.");
+        }
       } else if (error instanceof Error) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage("Falha ao realizar login");
+        setErrorMessage("Falha ao realizar login.");
       }
     } finally {
       setIsSubmitting(false);
@@ -59,7 +72,7 @@ export function LoginPage() {
           <p>Acesse o painel interno</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className="auth-form" noValidate>
           <label>
             Email
             <input
@@ -68,6 +81,7 @@ export function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@comprovos.com"
               required
+              autoComplete="username"
             />
           </label>
 
@@ -79,6 +93,7 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="********"
               required
+              autoComplete="current-password"
             />
           </label>
 
@@ -90,9 +105,7 @@ export function LoginPage() {
         </form>
 
         <div className="auth-footer">
-          <small>
-            Ambiente de teste: admin@comprovos.com / 123456
-          </small>
+          <small>Ambiente de teste: admin@comprovos.com / 123456</small>
         </div>
       </section>
     </main>
