@@ -1,198 +1,179 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { api } from "../services/api";
+import {
+  Client,
+  CreateClientInput,
+  createClient,
+  listClients,
+} from "../services/clients";
 
-type Client = {
-  id: string;
+type FormState = {
   name: string;
-  phone?: string | null;
-  email?: string | null;
-  cpfCnpj?: string | null;
-  rgIe?: string | null;
-  address?: string | null;
-  district?: string | null;
-  city?: string | null;
-  state?: string | null;
-  zipCode?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
+  phone: string;
+  email: string;
+  document: string; // CPF/CNPJ
+  rgIe: string;
+  cep: string;
+  address: string;
+  neighborhood: string; // bairro
+  city: string;
+  state: string;
 };
 
-type CreateClientInput = {
-  name: string;
-  phone?: string;
-  email?: string;
-  cpfCnpj?: string;
-  rgIe?: string;
-  address?: string;
-  district?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-};
-
-function normalizeOptionalText(value: string): string | undefined {
-  const v = value.trim();
-  return v.length > 0 ? v : undefined;
+function trim(v: string) {
+  return v.trim();
 }
 
-function parseApiMessage(err: unknown): string {
-  if (axios.isAxiosError(err)) {
-    const message =
-      (err.response?.data as { message?: string } | undefined)?.message ||
-      (typeof err.message === "string" ? err.message : "");
-    return message || "Não foi possível completar a ação.";
-  }
-  if (err instanceof Error) return err.message;
-  return "Não foi possível completar a ação.";
+function normalizeCreatePayload(form: FormState): CreateClientInput {
+  const payload: CreateClientInput = { name: trim(form.name) };
+
+  const maybeSet = (
+    key: keyof Omit<CreateClientInput, "name">,
+    value: string
+  ) => {
+    const v = trim(value);
+    if (v.length > 0) (payload as any)[key] = v;
+  };
+
+  maybeSet("phone", form.phone);
+  maybeSet("email", form.email);
+  maybeSet("document", form.document);
+  maybeSet("rgIe", form.rgIe);
+  maybeSet("cep", form.cep);
+  maybeSet("address", form.address);
+  maybeSet("neighborhood", form.neighborhood);
+  maybeSet("city", form.city);
+  maybeSet("state", form.state);
+
+  return payload;
+}
+
+function formatLocation(client: Client) {
+  const parts: string[] = [];
+
+  if (client.city) parts.push(client.city);
+  if (client.neighborhood) parts.push(client.neighborhood);
+
+  if (parts.length === 0 && client.address) parts.push(client.address);
+
+  return parts.join(" - ");
 }
 
 export function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [cpfCnpj, setCpfCnpj] = useState("");
-  const [rgIe, setRgIe] = useState("");
-  const [address, setAddress] = useState("");
-  const [district, setDistrict] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zipCode, setZipCode] = useState("");
+  const [form, setForm] = useState<FormState>({
+    name: "",
+    phone: "",
+    email: "",
+    document: "",
+    rgIe: "",
+    cep: "",
+    address: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+  });
 
   const sortedClients = useMemo(() => {
-    return [...clients].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    return [...clients].sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" })
+    );
   }, [clients]);
 
-  async function fetchClients(signal?: AbortSignal) {
+  async function fetchClients() {
     setLoading(true);
     setLoadError(null);
 
     try {
-      const { data } = await api.get<Client[]>("/clients", { signal });
+      const data = await listClients();
       setClients(Array.isArray(data) ? data : []);
-    } catch (err) {
-      // Se a requisição foi abortada, não mostra erro
-      if (axios.isCancel(err)) return;
-      // Alguns browsers/axios usam "CanceledError"
-      if ((err as any)?.name === "CanceledError") return;
-
-      setLoadError("Não foi possível carregar os clientes.");
+    } catch (err: any) {
+      if (axios.isAxiosError(err) && !err.response) {
+        setLoadError("Não foi possível conectar ao servidor.");
+      } else {
+        const msg =
+          (axios.isAxiosError(err) ? (err.response?.data as any)?.message : null) ||
+          "Não foi possível carregar a lista de clientes.";
+        setLoadError(msg);
+      }
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetchClients(controller.signal);
-    return () => controller.abort();
-  }, []);
-
   function openModal() {
     setSaveError(null);
-    setName("");
-    setPhone("");
-    setEmail("");
-    setCpfCnpj("");
-    setRgIe("");
-    setAddress("");
-    setDistrict("");
-    setCity("");
-    setState("");
-    setZipCode("");
+    setForm({
+      name: "",
+      phone: "",
+      email: "",
+      document: "",
+      rgIe: "",
+      cep: "",
+      address: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+    });
     setIsModalOpen(true);
   }
 
   function closeModal() {
-    if (isSaving) return; // evita fechar no meio do submit
+    if (isSaving) return;
     setIsModalOpen(false);
   }
 
-  async function handleCreateClient(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleCreateClient(event: FormEvent) {
+    event.preventDefault();
+    setIsSaving(true);
     setSaveError(null);
 
-    const trimmedName = name.trim();
-    if (trimmedName.length < 2) {
-      setSaveError("Informe um nome válido (mínimo 2 caracteres).");
-      return;
-    }
-
-    const payload: CreateClientInput = {
-      name: trimmedName,
-      phone: normalizeOptionalText(phone),
-      email: normalizeOptionalText(email),
-      cpfCnpj: normalizeOptionalText(cpfCnpj),
-      rgIe: normalizeOptionalText(rgIe),
-      address: normalizeOptionalText(address),
-      district: normalizeOptionalText(district),
-      city: normalizeOptionalText(city),
-      state: normalizeOptionalText(state),
-      zipCode: normalizeOptionalText(zipCode),
-    };
-
-    setIsSaving(true);
     try {
-      const { data } = await api.post<Client>("/clients", payload);
-      // Otimista: adiciona no topo e fecha modal
-      setClients((prev) => [data, ...prev]);
-      setIsModalOpen(false);
-    } catch (err) {
-      // Mensagem amigável para usuário (sem “backend”)
-      const msg = parseApiMessage(err);
+      const payload = normalizeCreatePayload(form);
+      await createClient(payload);
 
-      // Se o servidor estiver offline / sem resposta:
+      await fetchClients();
+      setIsModalOpen(false);
+    } catch (err: any) {
       if (axios.isAxiosError(err) && !err.response) {
         setSaveError("Não foi possível conectar ao servidor.");
-        return;
+      } else {
+        const msg =
+          (axios.isAxiosError(err) ? (err.response?.data as any)?.message : null) ||
+          "Não foi possível cadastrar o cliente.";
+        setSaveError(msg);
       }
-
-      // Mensagem padrão vinda da API (ex.: validação)
-      setSaveError(msg || "Não foi possível cadastrar o cliente.");
     } finally {
       setIsSaving(false);
     }
   }
 
+  useEffect(() => {
+    fetchClients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <section>
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="page-header">
         <div>
-          <h2 style={{ marginTop: 0, marginBottom: 6 }}>Clientes</h2>
-          <p style={{ color: "#64748b", marginTop: 0, marginBottom: 0 }}>
-            Cadastro e consulta de clientes.
-          </p>
+          <h2 className="page-title">Clientes</h2>
+          <p className="page-subtitle">Cadastro e consulta de clientes.</p>
         </div>
 
-        <div style={{ display: "flex", gap: 10 }}>
+        <div className="page-actions">
           <button
             type="button"
-            onClick={() => fetchClients()}
+            onClick={fetchClients}
             disabled={loading}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 10,
-              border: "1px solid #e2e8f0",
-              background: "white",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontWeight: 600,
-            }}
+            className="btn btn-secondary"
           >
             {loading ? "Carregando..." : "Atualizar"}
           </button>
@@ -200,467 +181,222 @@ export function ClientsPage() {
           <button
             type="button"
             onClick={openModal}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 10,
-              border: "1px solid #2563eb",
-              background: "#2563eb",
-              color: "white",
-              cursor: "pointer",
-              fontWeight: 700,
-            }}
+            className="btn btn-primary"
           >
             Novo cliente
           </button>
         </div>
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        {loadError && (
-          <div
-            style={{
-              background: "#fee2e2",
-              border: "1px solid #fecaca",
-              color: "#991b1b",
-              padding: 12,
-              borderRadius: 12,
-              marginBottom: 12,
-              fontWeight: 600,
-            }}
-          >
-            {loadError}
-          </div>
-        )}
+      {loadError && (
+        <div className="alert-error" role="alert" style={{ marginBottom: 12 }}>
+          {loadError}
+        </div>
+      )}
 
-        {loading ? (
-          <div
-            style={{
-              border: "1px solid #e2e8f0",
-              borderRadius: 12,
-              padding: 14,
-              background: "white",
-              color: "#64748b",
-            }}
-          >
-            Carregando lista de clientes...
-          </div>
-        ) : sortedClients.length === 0 ? (
-          <div
-            style={{
-              border: "1px dashed #cbd5e1",
-              borderRadius: 12,
-              padding: 16,
-              background: "white",
-              color: "#64748b",
-            }}
-          >
-            <strong>Nenhum cliente cadastrado.</strong>
-            <div style={{ marginTop: 6 }}>
-              Clique em <b>Novo cliente</b> para adicionar o primeiro.
-            </div>
-          </div>
-        ) : (
-          <div
-            style={{
-              border: "1px solid #e2e8f0",
-              borderRadius: 12,
-              overflow: "hidden",
-              background: "white",
-            }}
-          >
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      {loading ? (
+        <div className="muted">Carregando lista de clientes...</div>
+      ) : sortedClients.length === 0 ? (
+        <div className="muted">
+          <strong>Nenhum cliente cadastrado.</strong> Clique em <b>Novo cliente</b> para adicionar o primeiro.
+        </div>
+      ) : (
+        <div className="card">
+          <div className="table-wrap">
+            <table className="table">
               <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: 12,
-                      fontSize: 12,
-                      color: "#334155",
-                      borderBottom: "1px solid #e2e8f0",
-                    }}
-                  >
-                    Nome
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: 12,
-                      fontSize: 12,
-                      color: "#334155",
-                      borderBottom: "1px solid #e2e8f0",
-                      width: 220,
-                    }}
-                  >
-                    Contato
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: 12,
-                      fontSize: 12,
-                      color: "#334155",
-                      borderBottom: "1px solid #e2e8f0",
-                      width: 220,
-                    }}
-                  >
-                    Documento
-                  </th>
+                <tr>
+                  <th>Nome</th>
+                  <th>Contato</th>
+                  <th>Documento</th>
                 </tr>
               </thead>
+
               <tbody>
                 {sortedClients.map((c) => (
                   <tr key={c.id}>
-                    <td
-                      style={{
-                        padding: 12,
-                        borderBottom: "1px solid #f1f5f9",
-                        fontWeight: 700,
-                        color: "#0f172a",
-                      }}
-                    >
-                      {c.name}
-                      <div style={{ fontWeight: 500, color: "#64748b" }}>
-                        {c.city || c.district || c.address
-                          ? `${c.city ?? ""}${c.city && c.district ? " - " : ""}${
-                              c.district ?? ""
-                            }`
-                          : ""}
-                      </div>
+                    <td>
+                      <div style={{ fontWeight: 800 }}>{c.name}</div>
+                      <div className="muted">{formatLocation(c) || "-"}</div>
                     </td>
-                    <td
-                      style={{
-                        padding: 12,
-                        borderBottom: "1px solid #f1f5f9",
-                        color: "#334155",
-                      }}
-                    >
+
+                    <td>
                       <div>{c.email || "-"}</div>
-                      <div style={{ color: "#64748b" }}>{c.phone || "-"}</div>
+                      <div className="muted">{c.phone || "-"}</div>
                     </td>
-                    <td
-                      style={{
-                        padding: 12,
-                        borderBottom: "1px solid #f1f5f9",
-                        color: "#334155",
-                      }}
-                    >
-                      <div>{c.cpfCnpj || "-"}</div>
-                      <div style={{ color: "#64748b" }}>{c.rgIe || "-"}</div>
+
+                    <td>
+                      <div>{c.document || "-"}</div>
+                      <div className="muted">{c.rgIe || "-"}</div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Modal */}
       {isModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={closeModal}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            zIndex: 50,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(720px, 100%)",
-              background: "white",
-              borderRadius: 16,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                padding: "14px 16px",
-                borderBottom: "1px solid #e2e8f0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal">
+            <div className="modal-header">
               <div>
-                <div style={{ fontWeight: 900, color: "#0f172a" }}>
-                  Novo cliente
-                </div>
-                <div style={{ color: "#64748b", fontSize: 13 }}>
-                  Preencha os dados abaixo e clique em “Salvar”.
-                </div>
+                <h3 className="modal-title">Novo cliente</h3>
+                <p>Preencha os dados abaixo e clique em “Salvar”.</p>
               </div>
 
               <button
                 type="button"
+                className="icon-btn"
                 onClick={closeModal}
-                disabled={isSaving}
-                style={{
-                  border: "1px solid #e2e8f0",
-                  background: "white",
-                  borderRadius: 10,
-                  padding: "8px 10px",
-                  cursor: isSaving ? "not-allowed" : "pointer",
-                  fontWeight: 800,
-                }}
                 aria-label="Fechar"
+                disabled={isSaving}
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleCreateClient}>
-              <div style={{ padding: 16 }}>
+              <div className="modal-body">
                 {saveError && (
-                  <div
-                    style={{
-                      background: "#fee2e2",
-                      border: "1px solid #fecaca",
-                      color: "#991b1b",
-                      padding: 12,
-                      borderRadius: 12,
-                      marginBottom: 12,
-                      fontWeight: 600,
-                    }}
-                  >
+                  <div className="alert-error" role="alert" style={{ marginBottom: 12 }}>
                     {saveError}
                   </div>
                 )}
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 12,
-                  }}
-                >
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      Nome *
-                    </span>
+                <div className="form-grid">
+                  <label className="field">
+                    Nome *
                     <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Ex.: João Alves"
+                      value={form.name}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, name: e.target.value }))
+                      }
+                      placeholder="Ex.: Maria"
                       required
                       autoFocus
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                      }}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      Telefone
-                    </span>
+                  <label className="field">
+                    Telefone
                     <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      value={form.phone}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, phone: e.target.value }))
+                      }
                       placeholder="Ex.: (85) 99999-9999"
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                      }}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      Email
-                    </span>
+                  <label className="field">
+                    Email
                     <input
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      value={form.email}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, email: e.target.value }))
+                      }
                       placeholder="Ex.: joao@email.com"
-                      type="email"
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                      }}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      CPF/CNPJ
-                    </span>
+                  <label className="field">
+                    CPF/CNPJ
                     <input
-                      value={cpfCnpj}
-                      onChange={(e) => setCpfCnpj(e.target.value)}
+                      value={form.document}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, document: e.target.value }))
+                      }
                       placeholder="Ex.: 123.456.789-10"
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                      }}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      RG/IE
-                    </span>
+                  <label className="field">
+                    RG/IE
                     <input
-                      value={rgIe}
-                      onChange={(e) => setRgIe(e.target.value)}
+                      value={form.rgIe}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, rgIe: e.target.value }))
+                      }
                       placeholder="Ex.: 1234567"
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                      }}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      CEP
-                    </span>
+                  <label className="field">
+                    CEP
                     <input
-                      value={zipCode}
-                      onChange={(e) => setZipCode(e.target.value)}
+                      value={form.cep}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, cep: e.target.value }))
+                      }
                       placeholder="Ex.: 63500000"
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                      }}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6, gridColumn: "1 / -1" }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      Endereço
-                    </span>
+                  <label className="field field-full">
+                    Endereço
                     <input
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
+                      value={form.address}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, address: e.target.value }))
+                      }
                       placeholder="Ex.: Avenida Santos Dumont, 455"
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                      }}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      Bairro
-                    </span>
+                  <label className="field">
+                    Bairro
                     <input
-                      value={district}
-                      onChange={(e) => setDistrict(e.target.value)}
+                      value={form.neighborhood}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, neighborhood: e.target.value }))
+                      }
                       placeholder="Ex.: Centro"
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                      }}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      Cidade
-                    </span>
+                  <label className="field">
+                    Cidade
                     <input
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      value={form.city}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, city: e.target.value }))
+                      }
                       placeholder="Ex.: Fortaleza"
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                      }}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                      Estado
-                    </span>
+                  <label className="field field-full">
+                    Estado
                     <input
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
+                      value={form.state}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, state: e.target.value }))
+                      }
                       placeholder="Ex.: CE"
                       maxLength={2}
-                      style={{
-                        padding: 10,
-                        borderRadius: 10,
-                        border: "1px solid #cbd5e1",
-                        outline: "none",
-                        textTransform: "uppercase",
-                      }}
+                      style={{ textTransform: "uppercase" }}
                     />
                   </label>
                 </div>
               </div>
 
-              <div
-                style={{
-                  padding: 16,
-                  borderTop: "1px solid #e2e8f0",
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: 10,
-                }}
-              >
+              <div className="modal-footer">
                 <button
                   type="button"
+                  className="btn btn-secondary"
                   onClick={closeModal}
                   disabled={isSaving}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #e2e8f0",
-                    background: "white",
-                    cursor: isSaving ? "not-allowed" : "pointer",
-                    fontWeight: 700,
-                  }}
                 >
                   Cancelar
                 </button>
 
                 <button
                   type="submit"
+                  className="btn btn-primary"
                   disabled={isSaving}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #2563eb",
-                    background: "#2563eb",
-                    color: "white",
-                    cursor: isSaving ? "not-allowed" : "pointer",
-                    fontWeight: 800,
-                    minWidth: 120,
-                  }}
                 >
                   {isSaving ? "Salvando..." : "Salvar"}
                 </button>
