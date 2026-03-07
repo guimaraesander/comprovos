@@ -153,17 +153,17 @@ export function DevicesPage() {
   }
 
   return (
-    <section className="content-body">
+    <section>
       <div className="page-header">
         <div>
-          <h2 style={{ marginTop: 0 }}>Equipamentos</h2>
-          <p style={{ color: "#64748b" }}>Cadastro e gerenciamento de equipamentos.</p>
+          <h2 className="page-title">Equipamentos</h2>
+          <p className="page-subtitle">Cadastro e gerenciamento de equipamentos.</p>
         </div>
 
         <div className="page-actions">
           <button
             type="button"
-            className="btn-secondary"
+            className="btn btn-secondary"
             onClick={refresh}
             disabled={loading || refreshing}
             title="Atualiza lista"
@@ -173,7 +173,7 @@ export function DevicesPage() {
 
           <button
             type="button"
-            className="btn-primary"
+            className="btn btn-primary"
             onClick={openModal}
             disabled={loading}
           >
@@ -189,7 +189,7 @@ export function DevicesPage() {
       )}
 
       {loading ? (
-        <div style={{ color: "#64748b" }}>Carregando...</div>
+        <div className="muted">Carregando...</div>
       ) : (
         <div className="card">
           <div className="table-wrap">
@@ -205,7 +205,7 @@ export function DevicesPage() {
               <tbody>
                 {devices.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ color: "#64748b" }}>
+                    <td colSpan={4} className="muted">
                       Nenhum equipamento cadastrado.
                     </td>
                   </tr>
@@ -235,13 +235,17 @@ export function DevicesPage() {
           <div className="modal">
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0 }}>Novo equipamento</h3>
-                <p style={{ margin: "4px 0 0", color: "#64748b" }}>
-                  Preencha os dados e clique em “Salvar”.
-                </p>
+                <h3 className="modal-title">Novo equipamento</h3>
+                <p>Preencha os dados e clique em “Salvar”.</p>
               </div>
 
-              <button type="button" className="icon-btn" onClick={closeModal} aria-label="Fechar">
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={closeModal}
+                aria-label="Fechar"
+                disabled={saving}
+              >
                 ✕
               </button>
             </div>
@@ -252,7 +256,9 @@ export function DevicesPage() {
                   Cliente *
                   <select
                     value={form.clientId}
-                    onChange={(e) => setForm((p) => ({ ...p, clientId: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, clientId: e.target.value }))
+                    }
                     disabled={saving}
                   >
                     {clients.length === 0 ? (
@@ -301,7 +307,9 @@ export function DevicesPage() {
                   Número de série
                   <input
                     value={form.serialNumber}
-                    onChange={(e) => setForm((p) => ({ ...p, serialNumber: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, serialNumber: e.target.value }))
+                    }
                     placeholder="Ex.: 0A9XH012973"
                     disabled={saving}
                   />
@@ -321,7 +329,9 @@ export function DevicesPage() {
                   Acessórios
                   <input
                     value={form.accessories}
-                    onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, accessories: e.target.value }))
+                    }
                     placeholder="Ex.: carregador, cabo, bag"
                     disabled={saving}
                   />
@@ -341,10 +351,20 @@ export function DevicesPage() {
             </div>
 
             <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={closeModal} disabled={saving}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={closeModal}
+                disabled={saving}
+              >
                 Cancelar
               </button>
-              <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSave}
+                disabled={saving}
+              >
                 {saving ? "Salvando..." : "Salvar"}
               </button>
             </div>
