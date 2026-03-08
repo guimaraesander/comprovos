@@ -20,10 +20,8 @@ function normalizeText(value: string) {
 
 function safeErrorMessage(err: unknown) {
   if (axios.isAxiosError(err)) {
-    const message =
-      (err.response?.data as { message?: string } | undefined)?.message ||
-      "Não foi possível concluir a operação.";
-    return message;
+    if (!err.response) return "Não foi possível conectar ao servidor.";
+    return (err.response.data as any)?.message || "Não foi possível concluir a operação.";
   }
   if (err instanceof Error) return err.message;
   return "Não foi possível concluir a operação.";
@@ -34,7 +32,6 @@ export function DevicesPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,12 +58,9 @@ export function DevicesPage() {
     setError(null);
     setLoading(true);
     try {
-      const [devicesData, clientsData] = await Promise.all([
-        listDevices(),
-        listClients(),
-      ]);
-      setDevices(devicesData);
-      setClients(clientsData);
+      const [devicesData, clientsData] = await Promise.all([listDevices(), listClients()]);
+      setDevices(Array.isArray(devicesData) ? devicesData : []);
+      setClients(Array.isArray(clientsData) ? clientsData : []);
     } catch (err) {
       setError(safeErrorMessage(err));
     } finally {
@@ -78,12 +72,9 @@ export function DevicesPage() {
     setError(null);
     setRefreshing(true);
     try {
-      const [devicesData, clientsData] = await Promise.all([
-        listDevices(),
-        listClients(),
-      ]);
-      setDevices(devicesData);
-      setClients(clientsData);
+      const [devicesData, clientsData] = await Promise.all([listDevices(), listClients()]);
+      setDevices(Array.isArray(devicesData) ? devicesData : []);
+      setClients(Array.isArray(clientsData) ? clientsData : []);
     } catch (err) {
       setError(safeErrorMessage(err));
     } finally {
@@ -153,30 +144,24 @@ export function DevicesPage() {
   }
 
   return (
-    <section>
+    <section className="content-body">
       <div className="page-header">
         <div>
-          <h2 className="page-title">Equipamentos</h2>
-          <p className="page-subtitle">Cadastro e gerenciamento de equipamentos.</p>
+          <h2 style={{ marginTop: 0 }}>Equipamentos</h2>
+          <p style={{ color: "#64748b" }}>Cadastro e gerenciamento de equipamentos.</p>
         </div>
 
         <div className="page-actions">
           <button
             type="button"
-            className="btn btn-secondary"
+            className="btn-secondary"
             onClick={refresh}
             disabled={loading || refreshing}
-            title="Atualiza lista"
           >
             {refreshing ? "Atualizando..." : "Atualizar"}
           </button>
 
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={openModal}
-            disabled={loading}
-          >
+          <button type="button" className="btn-primary" onClick={openModal} disabled={loading}>
             Novo equipamento
           </button>
         </div>
@@ -189,7 +174,7 @@ export function DevicesPage() {
       )}
 
       {loading ? (
-        <div className="muted">Carregando...</div>
+        <div style={{ color: "#64748b" }}>Carregando...</div>
       ) : (
         <div className="card">
           <div className="table-wrap">
@@ -205,7 +190,7 @@ export function DevicesPage() {
               <tbody>
                 {devices.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="muted">
+                    <td colSpan={4} style={{ color: "#64748b" }}>
                       Nenhum equipamento cadastrado.
                     </td>
                   </tr>
@@ -217,7 +202,7 @@ export function DevicesPage() {
                       <tr key={d.id}>
                         <td>{d.type}</td>
                         <td>{modelText || "-"}</td>
-                        <td>{client?.name || d.clientId}</td>
+                        <td>{client?.name || "-"}</td>
                         <td>{d.serialNumber || "-"}</td>
                       </tr>
                     );
@@ -229,23 +214,25 @@ export function DevicesPage() {
         </div>
       )}
 
-      {/* Modal */}
       {isModalOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
           <div className="modal">
             <div className="modal-header">
               <div>
-                <h3 className="modal-title">Novo equipamento</h3>
-                <p>Preencha os dados e clique em “Salvar”.</p>
+                <h3 style={{ margin: 0 }}>Novo equipamento</h3>
+                <p style={{ margin: "4px 0 0", color: "#64748b" }}>
+                  Preencha os dados e clique em “Salvar”.
+                </p>
               </div>
 
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={closeModal}
-                aria-label="Fechar"
-                disabled={saving}
-              >
+              <button type="button" className="icon-btn" onClick={closeModal} aria-label="Fechar">
                 ✕
               </button>
             </div>
@@ -256,9 +243,7 @@ export function DevicesPage() {
                   Cliente *
                   <select
                     value={form.clientId}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, clientId: e.target.value }))
-                    }
+                    onChange={(e) => setForm((p) => ({ ...p, clientId: e.target.value }))}
                     disabled={saving}
                   >
                     {clients.length === 0 ? (
@@ -280,6 +265,7 @@ export function DevicesPage() {
                     onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
                     placeholder="Ex.: Notebook, Desktop, Placa-mãe"
                     disabled={saving}
+                    required
                   />
                 </label>
 
@@ -307,9 +293,7 @@ export function DevicesPage() {
                   Número de série
                   <input
                     value={form.serialNumber}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, serialNumber: e.target.value }))
-                    }
+                    onChange={(e) => setForm((p) => ({ ...p, serialNumber: e.target.value }))}
                     placeholder="Ex.: 0A9XH012973"
                     disabled={saving}
                   />
@@ -329,9 +313,7 @@ export function DevicesPage() {
                   Acessórios
                   <input
                     value={form.accessories}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, accessories: e.target.value }))
-                    }
+                    onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))}
                     placeholder="Ex.: carregador, cabo, bag"
                     disabled={saving}
                   />
@@ -343,30 +325,25 @@ export function DevicesPage() {
                     value={form.notes}
                     onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                     placeholder="Observações gerais do equipamento"
+                    rows={4}
                     disabled={saving}
-                    rows={3}
                   />
                 </label>
               </div>
-            </div>
 
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={closeModal}
-                disabled={saving}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? "Salvando..." : "Salvar"}
-              </button>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={closeModal}
+                  disabled={saving}
+                >
+                  Cancelar
+                </button>
+                <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
+                  {saving ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

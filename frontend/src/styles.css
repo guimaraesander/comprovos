@@ -232,156 +232,104 @@ a {
 }
 
 /* =========================================================
-   Pages (Cards / Headers / Buttons / Tables)
+   Shared UI (PADRÃO PARA NOVAS PÁGINAS)
 ========================================================= */
-.card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 16px;
-}
-
 .page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 22px;
-}
-
-.page-subtitle {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
 .page-actions {
   display: flex;
   gap: 10px;
-  align-items: center;
 }
 
-.btn {
-  height: 38px;
+.btn-primary,
+.btn-secondary {
+  height: 40px;
   border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #0f172a;
-  padding: 0 12px;
   font-weight: 700;
+  padding: 0 14px;
   cursor: pointer;
+  border: 1px solid transparent;
 }
 
-.btn:hover {
-  background: #f1f5f9;
+.btn-primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
 }
 
-.btn:disabled {
+.btn-primary:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.btn-primary {
-  border: none;
-  background: #2563eb;
-  color: #ffffff;
-}
-
-.btn-primary:hover {
-  background: #1d4ed8;
-}
-
-/* Alias p/ manter padrão */
 .btn-secondary {
-  border: 1px solid #cbd5e1;
   background: #ffffff;
+  border-color: #e2e8f0;
   color: #0f172a;
 }
 
-.btn-secondary:hover {
-  background: #f1f5f9;
+.btn-secondary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
-.btn-ghost {
-  background: transparent;
-  border: 1px solid #cbd5e1;
-}
-
-.btn-danger {
-  border: none;
-  background: #dc2626;
-  color: #fff;
-}
-
-.btn-danger:hover {
-  background: #b91c1c;
+.card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  overflow: hidden;
 }
 
 .table-wrap {
-  overflow: auto;
+  width: 100%;
+  overflow-x: auto;
 }
 
 .table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-collapse: collapse;
 }
 
-.table th,
-.table td {
-  text-align: left;
-  padding: 12px 12px;
-  border-bottom: 1px solid #eef2f7;
-  vertical-align: top;
-  font-size: 14px;
+.table thead tr {
+  background: #f8fafc;
 }
 
 .table th {
-  background: #f8fafc;
-  font-weight: 800;
-  color: #0f172a;
+  text-align: left;
   font-size: 12px;
-  text-transform: none;
+  color: #334155;
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.table tr:last-child td {
-  border-bottom: none;
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
 }
 
-.table a {
-  color: #2563eb;
-}
-
-.table .muted,
-.muted {
-  color: #64748b;
-}
-
+/* Alerts */
 .alert-error {
   background: #fee2e2;
-  color: #7f1d1d;
   border: 1px solid #fecaca;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 14px;
+  color: #991b1b;
+  padding: 12px;
+  border-radius: 12px;
   font-weight: 600;
 }
 
-/* =========================================================
-   Modal
-========================================================= */
+/* Modal */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
+  background: rgba(15, 23, 42, 0.45);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -389,128 +337,86 @@ a {
 }
 
 .modal {
-  width: 100%;
-  max-width: 860px;
+  width: min(860px, 100%);
   background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
+  border-radius: 16px;
   border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
   overflow: hidden;
 }
 
 .modal-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 18px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 18px;
-}
-
-.modal-header p {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.icon-btn,
-.modal-close {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  cursor: pointer;
-}
-
-.icon-btn:hover,
-.modal-close:hover {
-  background: #f1f5f9;
-}
-
-.icon-btn:disabled,
-.modal-close:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
 }
 
 .modal-body {
-  padding: 16px 18px;
+  padding: 16px;
 }
 
 .modal-footer {
+  padding: 14px 16px;
+  border-top: 1px solid #e2e8f0;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 14px 18px;
-  border-top: 1px solid #e2e8f0;
-  background: #ffffff;
 }
 
-/* Forms inside modal/pages */
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.icon-btn:hover {
+  background: #f8fafc;
+}
+
+/* Forms */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-.form-grid .full-row {
-  grid-column: 1 / -1;
-}
-
-/* aliases usados nas páginas */
 .field {
   display: grid;
   gap: 6px;
   font-weight: 700;
   font-size: 13px;
+  color: #0f172a;
 }
 
 .field-full {
   grid-column: 1 / -1;
 }
 
-.form-grid label {
-  display: grid;
-  gap: 6px;
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.form-grid input,
-.form-grid select,
-.form-grid textarea {
+.field input,
+.field select,
+.field textarea {
   width: 100%;
-  height: 40px;
   border-radius: 10px;
   border: 1px solid #cbd5e1;
-  padding: 0 12px;
-  outline: none;
-  font-size: 14px;
-  background: #fff;
-}
-
-.form-grid textarea {
-  height: 90px;
   padding: 10px 12px;
-  resize: vertical;
+  font-size: 14px;
+  outline: none;
 }
 
-.form-grid input:focus,
-.form-grid select:focus,
-.form-grid textarea:focus {
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.20);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 
-/* =========================================================
-   Responsive
-========================================================= */
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -520,20 +426,7 @@ a {
     grid-template-rows: auto auto auto;
   }
 
-  .page-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .page-actions {
-    justify-content: flex-start;
-  }
-
   .form-grid {
     grid-template-columns: 1fr;
-  }
-
-  .modal {
-    max-width: 100%;
   }
 }

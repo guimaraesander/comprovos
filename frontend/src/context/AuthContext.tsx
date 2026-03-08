@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import axios from "axios";
 import { api, setApiAuthToken } from "../services/api";
 
@@ -21,7 +29,7 @@ type LoginResponse = {
   token: string;
 };
 
-type AuthContextValue = {
+type AuthContextData = {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
@@ -30,101 +38,92 @@ type AuthContextValue = {
   logout: () => void;
 };
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextData | undefined>(undefined);
 
-const STORAGE_TOKEN_KEY = "comprovos:token";
-const STORAGE_USER_KEY = "comprovos:user";
+const STORAGE_KEY = "comprovos.auth";
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restaura sessão ao abrir o app
+  const isAuthenticated = !!token && !!user;
+
   useEffect(() => {
     try {
-      const savedToken = localStorage.getItem(STORAGE_TOKEN_KEY);
-      const savedUser = localStorage.getItem(STORAGE_USER_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
 
-      if (savedToken) {
-        setToken(savedToken);
-        setApiAuthToken(savedToken);
-      }
-
-      if (savedUser) {
-        setUser(JSON.parse(savedUser) as AuthUser);
+      const parsed = JSON.parse(raw) as { user?: AuthUser; token?: string };
+      if (parsed?.token && parsed?.user) {
+        setUser(parsed.user);
+        setToken(parsed.token);
+        setApiAuthToken(parsed.token);
       }
     } catch {
-      // Se corromper storage, limpa e segue
-      localStorage.removeItem(STORAGE_TOKEN_KEY);
-      localStorage.removeItem(STORAGE_USER_KEY);
-      setApiAuthToken(null);
-      setToken(null);
-      setUser(null);
+      localStorage.removeItem(STORAGE_KEY);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  async function login(input: LoginInput) {
-    const email = input.email?.trim();
-    const password = input.password;
-
-    if (!email || !password) {
-      throw new Error("Email e senha são obrigatórios.");
+  const persist = useCallback((nextUser: AuthUser | null, nextToken: string | null) => {
+    if (nextUser && nextToken) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: nextUser, token: nextToken }));
+      setApiAuthToken(nextToken);
+      return;
     }
-
-    try {
-      const res = await api.post<LoginResponse>("/auth/login", { email, password });
-
-      const { token: newToken, user: newUser } = res.data;
-
-      setToken(newToken);
-      setUser(newUser);
-
-      localStorage.setItem(STORAGE_TOKEN_KEY, newToken);
-      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(newUser));
-
-      setApiAuthToken(newToken);
-    } catch (err) {
-      // Padroniza erros pra UI
-      if (axios.isAxiosError(err)) {
-        const status = err.response?.status;
-        const apiMessage = (err.response?.data as { message?: string } | undefined)?.message;
-
-        if (!err.response) {
-          throw new Error("Não foi possível conectar ao servidor.");
-        }
-
-        if (status === 401) {
-          throw new Error("Credenciais inválidas.");
-        }
-
-        throw new Error(apiMessage || "Falha ao realizar login.");
-      }
-
-      throw err instanceof Error ? err : new Error("Falha ao realizar login.");
-    }
-  }
-
-  function logout() {
-    setToken(null);
-    setUser(null);
+    localStorage.removeItem(STORAGE_KEY);
     setApiAuthToken(null);
-    localStorage.removeItem(STORAGE_TOKEN_KEY);
-    localStorage.removeItem(STORAGE_USER_KEY);
-  }
+  }, []);
 
-  const value = useMemo<AuthContextValue>(
+  const login = useCallback(
+    async (input: LoginInput) => {
+      const email = input.email.trim();
+      const password = input.password;
+
+      const res = await api.post<LoginResponse>("/auth/login", { email, password });
+      const nextUser = res.data.user;
+      const nextToken = res.data.token;
+
+      setUser(nextUser);
+      setToken(nextToken);
+      persist(nextUser, nextToken);
+    },
+    [persist]
+  );
+
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    persist(null, null);
+  }, [persist]);
+
+  useEffect(() => {
+    const id = api.interceptors.response.use(
+      (r) => r,
+      (err) => {
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          setUser(null);
+          setToken(null);
+          persist(null, null);
+        }
+        return Promise.reject(err);
+      }
+    );
+    return () => api.interceptors.response.eject(id);
+  }, [persist]);
+
+  const value = useMemo<AuthContextData>(
     () => ({
       user,
       token,
-      isAuthenticated: !!token,
+      isAuthenticated,
       isLoading,
       login,
       logout,
     }),
-    [user, token, isLoading]
+    [user, token, isAuthenticated, isLoading, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -132,6 +131,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth deve ser usado dentro de <AuthProvider />");
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
