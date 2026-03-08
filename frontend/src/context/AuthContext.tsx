@@ -7,11 +7,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import axios from "axios";
 import { api, setApiAuthToken } from "../services/api";
 
 type UserRole = "ADMIN" | "TECNICO";
 
-type AuthUser = {
+export type AuthUser = {
   id: string;
   name: string;
   email: string;
@@ -23,135 +24,113 @@ type LoginInput = {
   password: string;
 };
 
+type LoginResponse = {
+  user: AuthUser;
+  token: string;
+};
+
 type AuthContextData = {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (data: LoginInput) => Promise<void>;
+  login: (input: LoginInput) => Promise<void>;
   logout: () => void;
 };
 
-const AUTH_STORAGE_KEY = "@comprovos:auth";
-
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
 
-type AuthStorageData = {
-  token: string;
-  user: AuthUser;
-};
+const STORAGE_KEY = "comprovos.auth";
 
-type AuthProviderProps = {
-  children: ReactNode;
-};
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const saveAuthData = useCallback((data: AuthStorageData) => {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data));
+  const isAuthenticated = !!token && !!user;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as { user?: AuthUser; token?: string };
+      if (parsed?.token && parsed?.user) {
+        setUser(parsed.user);
+        setToken(parsed.token);
+        setApiAuthToken(parsed.token);
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const clearAuthData = useCallback(() => {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+  const persist = useCallback((nextUser: AuthUser | null, nextToken: string | null) => {
+    if (nextUser && nextToken) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: nextUser, token: nextToken }));
+      setApiAuthToken(nextToken);
+      return;
+    }
+    localStorage.removeItem(STORAGE_KEY);
+    setApiAuthToken(null);
   }, []);
+
+  const login = useCallback(
+    async (input: LoginInput) => {
+      const email = input.email.trim();
+      const password = input.password;
+
+      const res = await api.post<LoginResponse>("/auth/login", { email, password });
+      const nextUser = res.data.user;
+      const nextToken = res.data.token;
+
+      setUser(nextUser);
+      setToken(nextToken);
+      persist(nextUser, nextToken);
+    },
+    [persist]
+  );
 
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
-    clearAuthData();
-    setApiAuthToken(null);
-  }, [clearAuthData]);
-
-  const login = useCallback(
-    async ({ email, password }: LoginInput) => {
-      const response = await api.post("/auth/login", { email, password });
-
-      const responseUser = response.data?.user as AuthUser | undefined;
-      const responseToken = response.data?.token as string | undefined;
-
-      if (!responseUser || !responseToken) {
-        throw new Error("Resposta de login invalida");
-      }
-
-      setUser(responseUser);
-      setToken(responseToken);
-
-      setApiAuthToken(responseToken);
-
-      saveAuthData({
-        token: responseToken,
-        user: responseUser,
-      });
-    },
-    [saveAuthData]
-  );
+    persist(null, null);
+  }, [persist]);
 
   useEffect(() => {
-    async function restoreSession() {
-      try {
-        const storageRaw = localStorage.getItem(AUTH_STORAGE_KEY);
-
-        if (!storageRaw) {
-          setIsLoading(false);
-          return;
+    const id = api.interceptors.response.use(
+      (r) => r,
+      (err) => {
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          setUser(null);
+          setToken(null);
+          persist(null, null);
         }
-
-        const parsed = JSON.parse(storageRaw) as Partial<AuthStorageData>;
-
-        if (!parsed.token) {
-          logout();
-          setIsLoading(false);
-          return;
-        }
-
-        setApiAuthToken(parsed.token);
-
-        // Valida token no backend e pega user atual
-        const meResponse = await api.get<AuthUser>("/auth/me");
-
-        const meUser = meResponse.data;
-
-        setToken(parsed.token);
-        setUser(meUser);
-
-        saveAuthData({
-          token: parsed.token,
-          user: meUser,
-        });
-      } catch {
-        logout();
-      } finally {
-        setIsLoading(false);
+        return Promise.reject(err);
       }
-    }
-
-    void restoreSession();
-  }, [logout, saveAuthData]);
+    );
+    return () => api.interceptors.response.eject(id);
+  }, [persist]);
 
   const value = useMemo<AuthContextData>(
     () => ({
       user,
       token,
-      isAuthenticated: !!user && !!token,
+      isAuthenticated,
       isLoading,
       login,
       logout,
     }),
-    [user, token, isLoading, login, logout]
+    [user, token, isAuthenticated, isLoading, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth deve ser usado dentro de AuthProvider");
-  }
-
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }

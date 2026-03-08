@@ -1,0 +1,20 @@
+import React, { ReactNode } from "react";
+import styles from "./PageHeader.module.css";
+
+type Props = {
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+};
+
+export function PageHeader({ title, subtitle, actions }: Props) {
+  return (
+    <div className={styles.header}>
+      <div>
+        <h2 className={styles.title}>{title}</h2>
+        {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
+      </div>
+      {actions ? <div className={styles.actions}>{actions}</div> : null}
+    </div>
+  );
+}
