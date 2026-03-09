@@ -21,5 +21,5 @@ app.use("/api", router);
 // Swagger
 setupSwagger(app);
 
-// Handler de erros (deixe por último)
+// Handler de erros (deixar por último)
 app.use(errorHandler);

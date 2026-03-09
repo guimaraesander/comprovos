@@ -5,123 +5,69 @@ import {
   updateServiceOrderSchema,
   updateServiceOrderStatusSchema,
 } from "./service-orders.schemas";
-import { getRequiredParam } from "../../shared/http/get-required-param";
+import { getRequiredParam } from "../../utils/get-required-param";
 
-const serviceOrdersService = new ServiceOrdersService();
-
-type IdParams = {
-  id: string;
-};
-
-type AuthUser = {
-  id: string;
-  role: "ADMIN" | "TECNICO";
-};
-
-type AuthenticatedRequest = Request & {
-  user?: AuthUser;
-};
+const service = new ServiceOrdersService();
 
 export class ServiceOrdersController {
-  async create(
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  async list(_req: Request, res: Response, next: NextFunction) {
     try {
-      const data = createServiceOrderSchema.parse(req.body);
-      const createdByUserId = req.user?.id;
-
-      const serviceOrder = await serviceOrdersService.create(
-        data,
-        createdByUserId
-      );
-
-      res.status(201).json(serviceOrder);
-      return;
-    } catch (error) {
-      next(error);
-      return;
+      const orders = await service.list();
+      return res.status(200).json(orders);
+    } catch (err) {
+      return next(err);
     }
   }
 
-  async list(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      const serviceOrders = await serviceOrdersService.list();
-
-      res.status(200).json(serviceOrders);
-      return;
-    } catch (error) {
-      next(error);
-      return;
+      const id = getRequiredParam(req.params, "id");
+      const order = await service.getById(id);
+      return res.status(200).json(order);
+    } catch (err) {
+      return next(err);
     }
   }
 
-  async getById(
-    req: Request<IdParams>,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = getRequiredParam(
-        req.params,
-        "id",
-        "Id da ordem de servico nao informado"
-      );
-
-      const serviceOrder = await serviceOrdersService.getById(id);
-
-      res.status(200).json(serviceOrder);
-      return;
-    } catch (error) {
-      next(error);
-      return;
+      const input = createServiceOrderSchema.parse(req.body);
+      const created = await service.create(input);
+      return res.status(201).json(created);
+    } catch (err) {
+      return next(err);
     }
   }
 
-  async update(
-    req: Request<IdParams>,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = getRequiredParam(
-        req.params,
-        "id",
-        "Id da ordem de servico nao informado"
-      );
-
-      const data = updateServiceOrderSchema.parse(req.body);
-      const serviceOrder = await serviceOrdersService.update(id, data);
-
-      res.status(200).json(serviceOrder);
-      return;
-    } catch (error) {
-      next(error);
-      return;
+      const id = getRequiredParam(req.params, "id");
+      const input = updateServiceOrderSchema.parse(req.body);
+      const updated = await service.update(id, input);
+      return res.status(200).json(updated);
+    } catch (err) {
+      return next(err);
     }
   }
 
-  async updateStatus(
-    req: Request<IdParams>,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  async updateStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = getRequiredParam(
-        req.params,
-        "id",
-        "Id da ordem de servico nao informado"
-      );
+      const id = getRequiredParam(req.params, "id");
+      const input = updateServiceOrderStatusSchema.parse(req.body);
+      const updated = await service.updateStatus(id, input);
+      return res.status(200).json(updated);
+    } catch (err) {
+      return next(err);
+    }
+  }
 
-      const data = updateServiceOrderStatusSchema.parse(req.body);
-      const serviceOrder = await serviceOrdersService.updateStatus(id, data);
-
-      res.status(200).json(serviceOrder);
-      return;
-    } catch (error) {
-      next(error);
-      return;
+  async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = getRequiredParam(req.params, "id");
+      await service.delete(id);
+      return res.status(204).send();
+    } catch (err) {
+      return next(err);
     }
   }
 }

@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma";
+import { HttpError } from "../../utils/http-error";
 import { CreateClientInput, UpdateClientInput } from "./clients.schemas";
 
 export class ClientsService {
@@ -6,7 +7,8 @@ export class ClientsService {
     return prisma.client.create({
       data: {
         ...data,
-        email: data.email || null,
+        // padroniza string vazia -> null
+        email: data.email?.trim() ? data.email.trim() : null,
       },
     });
   }
@@ -23,7 +25,7 @@ export class ClientsService {
     });
 
     if (!client) {
-      throw new Error("Cliente nao encontrado");
+      throw HttpError.notFound("Cliente não encontrado.");
     }
 
     return client;
@@ -36,7 +38,8 @@ export class ClientsService {
       where: { id },
       data: {
         ...data,
-        email: data.email === "" ? null : data.email,
+        // padroniza string vazia -> null
+        email: data.email?.trim() ? data.email.trim() : null,
       },
     });
   }
