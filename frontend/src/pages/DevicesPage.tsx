@@ -3,6 +3,14 @@ import axios from "axios";
 import { createDevice, listDevices, type Device } from "../services/devices";
 import { listClients, type Client } from "../services/clients";
 
+import { PageHeader } from "../components/PageHeader";
+import { Button } from "../components/Button";
+import { Modal } from "../components/Modal";
+import { Card } from "../components/Card";
+import { Table } from "../components/Table";
+import { FormGrid, Field } from "../components/Form";
+import { AlertError, Muted } from "../components/Alert";
+
 type CreateForm = {
   clientId: string;
   type: string;
@@ -143,211 +151,174 @@ export function DevicesPage() {
     }
   }
 
+  const modalFooter = (
+    <>
+      <Button type="button" variant="secondary" onClick={closeModal} disabled={saving}>
+        Cancelar
+      </Button>
+      <Button type="button" variant="primary" onClick={handleSave} disabled={saving}>
+        {saving ? "Salvando..." : "Salvar"}
+      </Button>
+    </>
+  );
+
   return (
     <section className="content-body">
-      <div className="page-header">
-        <div>
-          <h2 style={{ marginTop: 0 }}>Equipamentos</h2>
-          <p style={{ color: "#64748b" }}>Cadastro e gerenciamento de equipamentos.</p>
-        </div>
+      <PageHeader
+        title="Equipamentos"
+        subtitle="Cadastro e gerenciamento de equipamentos."
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={refresh}
+              disabled={loading || refreshing}
+            >
+              {refreshing ? "Atualizando..." : "Atualizar"}
+            </Button>
 
-        <div className="page-actions">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={refresh}
-            disabled={loading || refreshing}
-          >
-            {refreshing ? "Atualizando..." : "Atualizar"}
-          </button>
+            <Button type="button" variant="primary" onClick={openModal} disabled={loading}>
+              Novo equipamento
+            </Button>
+          </>
+        }
+      />
 
-          <button type="button" className="btn-primary" onClick={openModal} disabled={loading}>
-            Novo equipamento
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="alert-error" role="alert" style={{ marginBottom: 12 }}>
-          {error}
-        </div>
-      )}
+      {error && <AlertError className="mb-12">{error}</AlertError>}
 
       {loading ? (
-        <div style={{ color: "#64748b" }}>Carregando...</div>
+        <Muted>Carregando...</Muted>
       ) : (
-        <div className="card">
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
+        <Card>
+          <Table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Modelo</th>
+                <th>Cliente</th>
+                <th>Serial</th>
+              </tr>
+            </thead>
+            <tbody>
+              {devices.length === 0 ? (
                 <tr>
-                  <th>Tipo</th>
-                  <th>Modelo</th>
-                  <th>Cliente</th>
-                  <th>Serial</th>
+                  <td colSpan={4}>
+                    <Muted>Nenhum equipamento cadastrado.</Muted>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {devices.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} style={{ color: "#64748b" }}>
-                      Nenhum equipamento cadastrado.
-                    </td>
-                  </tr>
-                ) : (
-                  devices.map((d) => {
-                    const client = clientsById.get(d.clientId);
-                    const modelText = [d.brand, d.model].filter(Boolean).join(" ");
-                    return (
-                      <tr key={d.id}>
-                        <td>{d.type}</td>
-                        <td>{modelText || "-"}</td>
-                        <td>{client?.name || "-"}</td>
-                        <td>{d.serialNumber || "-"}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              ) : (
+                devices.map((d) => {
+                  const client = clientsById.get(d.clientId);
+                  const modelText = [d.brand, d.model].filter(Boolean).join(" ");
+                  return (
+                    <tr key={d.id}>
+                      <td>{d.type}</td>
+                      <td>{modelText || "-"}</td>
+                      <td>{client?.name || "-"}</td>
+                      <td>{d.serialNumber || "-"}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </Table>
+        </Card>
       )}
 
-      {isModalOpen && (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeModal();
-          }}
-        >
-          <div className="modal">
-            <div className="modal-header">
-              <div>
-                <h3 style={{ margin: 0 }}>Novo equipamento</h3>
-                <p style={{ margin: "4px 0 0", color: "#64748b" }}>
-                  Preencha os dados e clique em “Salvar”.
-                </p>
-              </div>
+      <Modal
+        title="Novo equipamento"
+        subtitle="Preencha os dados e clique em “Salvar”."
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        disableClose={saving}
+        footer={modalFooter}
+      >
+        <FormGrid>
+          <Field label="Cliente *">
+            <select
+              value={form.clientId}
+              onChange={(e) => setForm((p) => ({ ...p, clientId: e.target.value }))}
+              disabled={saving}
+            >
+              {clients.length === 0 ? (
+                <option value="">Nenhum cliente encontrado</option>
+              ) : (
+                clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </Field>
 
-              <button type="button" className="icon-btn" onClick={closeModal} aria-label="Fechar">
-                ✕
-              </button>
-            </div>
+          <Field label="Tipo *">
+            <input
+              value={form.type}
+              onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
+              placeholder="Ex.: Notebook, Desktop, Placa-mãe"
+              disabled={saving}
+              required
+            />
+          </Field>
 
-            <div className="modal-body">
-              <div className="form-grid">
-                <label className="field">
-                  Cliente *
-                  <select
-                    value={form.clientId}
-                    onChange={(e) => setForm((p) => ({ ...p, clientId: e.target.value }))}
-                    disabled={saving}
-                  >
-                    {clients.length === 0 ? (
-                      <option value="">Nenhum cliente encontrado</option>
-                    ) : (
-                      clients.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
+          <Field label="Marca">
+            <input
+              value={form.brand}
+              onChange={(e) => setForm((p) => ({ ...p, brand: e.target.value }))}
+              placeholder="Ex.: ASUS"
+              disabled={saving}
+            />
+          </Field>
 
-                <label className="field">
-                  Tipo *
-                  <input
-                    value={form.type}
-                    onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
-                    placeholder="Ex.: Notebook, Desktop, Placa-mãe"
-                    disabled={saving}
-                    required
-                  />
-                </label>
+          <Field label="Modelo">
+            <input
+              value={form.model}
+              onChange={(e) => setForm((p) => ({ ...p, model: e.target.value }))}
+              placeholder="Ex.: H310CM-HG4"
+              disabled={saving}
+            />
+          </Field>
 
-                <label className="field">
-                  Marca
-                  <input
-                    value={form.brand}
-                    onChange={(e) => setForm((p) => ({ ...p, brand: e.target.value }))}
-                    placeholder="Ex.: ASUS"
-                    disabled={saving}
-                  />
-                </label>
+          <Field label="Número de série">
+            <input
+              value={form.serialNumber}
+              onChange={(e) => setForm((p) => ({ ...p, serialNumber: e.target.value }))}
+              placeholder="Ex.: 0A9XH012973"
+              disabled={saving}
+            />
+          </Field>
 
-                <label className="field">
-                  Modelo
-                  <input
-                    value={form.model}
-                    onChange={(e) => setForm((p) => ({ ...p, model: e.target.value }))}
-                    placeholder="Ex.: H310CM-HG4"
-                    disabled={saving}
-                  />
-                </label>
+          <Field label="Senha">
+            <input
+              value={form.password}
+              onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+              placeholder="Se aplicável"
+              disabled={saving}
+            />
+          </Field>
 
-                <label className="field">
-                  Número de série
-                  <input
-                    value={form.serialNumber}
-                    onChange={(e) => setForm((p) => ({ ...p, serialNumber: e.target.value }))}
-                    placeholder="Ex.: 0A9XH012973"
-                    disabled={saving}
-                  />
-                </label>
+          <Field label="Acessórios" full>
+            <input
+              value={form.accessories}
+              onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))}
+              placeholder="Ex.: carregador, cabo, bag"
+              disabled={saving}
+            />
+          </Field>
 
-                <label className="field">
-                  Senha
-                  <input
-                    value={form.password}
-                    onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                    placeholder="Se aplicável"
-                    disabled={saving}
-                  />
-                </label>
-
-                <label className="field field-full">
-                  Acessórios
-                  <input
-                    value={form.accessories}
-                    onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))}
-                    placeholder="Ex.: carregador, cabo, bag"
-                    disabled={saving}
-                  />
-                </label>
-
-                <label className="field field-full">
-                  Observações
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-                    placeholder="Observações gerais do equipamento"
-                    rows={4}
-                    disabled={saving}
-                  />
-                </label>
-              </div>
-
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={closeModal}
-                  disabled={saving}
-                >
-                  Cancelar
-                </button>
-                <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
-                  {saving ? "Salvando..." : "Salvar"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          <Field label="Observações" full>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+              placeholder="Observações gerais do equipamento"
+              rows={4}
+              disabled={saving}
+            />
+          </Field>
+        </FormGrid>
+      </Modal>
     </section>
   );
 }
