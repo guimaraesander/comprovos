@@ -1,214 +1,151 @@
 import { prisma } from "../../lib/prisma";
-import {
+import { HttpError } from "../../utils/http-error";
+import type {
   CreateServiceOrderInput,
   UpdateServiceOrderInput,
   UpdateServiceOrderStatusInput,
 } from "./service-orders.schemas";
 
 export class ServiceOrdersService {
-  async create(data: CreateServiceOrderInput, createdByUserId?: string) {
+  async create(input: CreateServiceOrderInput) {
     const client = await prisma.client.findUnique({
-      where: { id: data.clientId },
+      where: { id: input.clientId },
+      select: { id: true },
     });
-
-    if (!client) {
-      throw new Error("Cliente nao encontrado para abrir a OS");
-    }
+    if (!client) throw HttpError.notFound("Cliente não encontrado.");
 
     const device = await prisma.device.findUnique({
-      where: { id: data.deviceId },
+      where: { id: input.deviceId },
+      select: { id: true, clientId: true },
     });
+    if (!device) throw HttpError.notFound("Equipamento não encontrado.");
 
-    if (!device) {
-      throw new Error("Equipamento nao encontrado para abrir a OS");
+    // regra segura: equipamento deve pertencer ao cliente
+    if (device.clientId !== input.clientId) {
+      throw HttpError.badRequest("O equipamento informado não pertence ao cliente.");
     }
 
-    if (device.clientId !== data.clientId) {
-      throw new Error("Equipamento nao pertence ao cliente informado");
-    }
-
-    const serviceOrder = await prisma.serviceOrder.create({
+    return prisma.serviceOrder.create({
       data: {
-        clientId: data.clientId,
-        deviceId: data.deviceId,
-        createdByUserId,
+        client: { connect: { id: input.clientId } },
+        device: { connect: { id: input.deviceId } },
 
-        symptoms: data.symptoms,
-        accessories: data.accessories,
-        observations: data.observations,
+        status: "ABERTA",
+        symptoms: input.symptoms,
 
-        status: data.status ?? "ABERTA",
+        accessories: input.accessories ?? null,
+        observations: input.observations ?? null,
 
-        budgetValue:
-          data.budgetValue !== undefined ? String(data.budgetValue) : undefined,
-        finalValue:
-          data.finalValue !== undefined ? String(data.finalValue) : undefined,
-
-        webKey: data.webKey,
-        trackingPassword: data.trackingPassword,
+        budgetValue: input.budgetValue ?? null,
+        finalValue: input.finalValue ?? null,
       },
       include: {
         client: true,
         device: true,
-        createdByUser: true,
-        history: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
-
-    // Histórico inicial (status de abertura)
-    await prisma.serviceOrderHistory.create({
-      data: {
-        serviceOrderId: serviceOrder.id,
-        previousStatus: null,
-        newStatus: serviceOrder.status,
-        note: "OS criada",
-      },
-    });
-
-    return prisma.serviceOrder.findUnique({
-      where: { id: serviceOrder.id },
-      include: {
-        client: true,
-        device: true,
-        createdByUser: true,
-        history: {
-          orderBy: { createdAt: "desc" },
-        },
       },
     });
   }
 
   async list() {
     return prisma.serviceOrder.findMany({
+      orderBy: { createdAt: "desc" },
       include: {
         client: true,
         device: true,
-        createdByUser: true,
-      },
-      orderBy: {
-        createdAt: "desc",
       },
     });
   }
 
   async getById(id: string) {
-    const serviceOrder = await prisma.serviceOrder.findUnique({
+    const order = await prisma.serviceOrder.findUnique({
       where: { id },
       include: {
         client: true,
         device: true,
-        createdByUser: true,
-        history: {
-          orderBy: { createdAt: "desc" },
-        },
       },
     });
 
-    if (!serviceOrder) {
-      throw new Error("Ordem de servico nao encontrada");
-    }
-
-    return serviceOrder;
+    if (!order) throw HttpError.notFound("Ordem de serviço não encontrada.");
+    return order;
   }
 
-  async update(id: string, data: UpdateServiceOrderInput) {
-    const existing = await prisma.serviceOrder.findUnique({
-      where: { id },
-    });
+  async update(id: string, input: UpdateServiceOrderInput) {
+    const current = await this.getById(id);
 
-    if (!existing) {
-      throw new Error("Ordem de servico nao encontrada");
-    }
+    const nextClientId = input.clientId ?? current.clientId;
+    const nextDeviceId = input.deviceId ?? current.deviceId;
 
-    if (data.clientId) {
+    // valida cliente
+    if (input.clientId) {
       const client = await prisma.client.findUnique({
-        where: { id: data.clientId },
+        where: { id: input.clientId },
+        select: { id: true },
       });
-
-      if (!client) {
-        throw new Error("Cliente nao encontrado");
-      }
+      if (!client) throw HttpError.notFound("Cliente não encontrado.");
     }
 
-    if (data.deviceId) {
+    // valida device
+    if (input.deviceId) {
       const device = await prisma.device.findUnique({
-        where: { id: data.deviceId },
+        where: { id: input.deviceId },
+        select: { id: true, clientId: true },
       });
+      if (!device) throw HttpError.notFound("Equipamento não encontrado.");
+    }
 
-      if (!device) {
-        throw new Error("Equipamento nao encontrado");
-      }
-
-      const targetClientId = data.clientId ?? existing.clientId;
-      if (device.clientId !== targetClientId) {
-        throw new Error("Equipamento nao pertence ao cliente informado");
-      }
+    // regra: device pertence ao client (no estado final)
+    const deviceCheck = await prisma.device.findUnique({
+      where: { id: nextDeviceId },
+      select: { clientId: true },
+    });
+    if (!deviceCheck) throw HttpError.notFound("Equipamento não encontrado.");
+    if (deviceCheck.clientId !== nextClientId) {
+      throw HttpError.badRequest("O equipamento informado não pertence ao cliente.");
     }
 
     return prisma.serviceOrder.update({
       where: { id },
       data: {
-        ...data,
-        budgetValue:
-          data.budgetValue !== undefined ? String(data.budgetValue) : undefined,
-        finalValue:
-          data.finalValue !== undefined ? String(data.finalValue) : undefined,
+        // troca vínculos via connect 
+        ...(input.clientId ? { client: { connect: { id: input.clientId } } } : {}),
+        ...(input.deviceId ? { device: { connect: { id: input.deviceId } } } : {}),
+
+        ...(typeof input.symptoms === "string" ? { symptoms: input.symptoms } : {}),
+        ...(input.accessories !== undefined ? { accessories: input.accessories ?? null } : {}),
+        ...(input.observations !== undefined ? { observations: input.observations ?? null } : {}),
+        ...(input.budgetValue !== undefined ? { budgetValue: input.budgetValue ?? null } : {}),
+        ...(input.finalValue !== undefined ? { finalValue: input.finalValue ?? null } : {}),
       },
       include: {
         client: true,
         device: true,
-        createdByUser: true,
-        history: {
-          orderBy: { createdAt: "desc" },
-        },
       },
     });
   }
 
-  async updateStatus(id: string, data: UpdateServiceOrderStatusInput) {
-    const existing = await prisma.serviceOrder.findUnique({
-      where: { id },
-    });
+  async updateStatus(id: string, input: UpdateServiceOrderStatusInput) {
+    await this.getById(id);
 
-    if (!existing) {
-      throw new Error("Ordem de servico nao encontrada");
-    }
+    const deliveredAt = input.status === "ENTREGUE" ? new Date() : undefined;
 
-    const previousStatus = existing.status;
-
-    const updated = await prisma.serviceOrder.update({
+    return prisma.serviceOrder.update({
       where: { id },
       data: {
-        status: data.status,
+        status: input.status,
+        ...(deliveredAt ? { deliveredAt } : {}),
       },
       include: {
         client: true,
         device: true,
-        createdByUser: true,
       },
     });
+  }
 
-    await prisma.serviceOrderHistory.create({
-      data: {
-        serviceOrderId: id,
-        previousStatus,
-        newStatus: data.status,
-        note: data.note,
-      },
-    });
+  async delete(id: string) {
+    await this.getById(id);
 
-    return prisma.serviceOrder.findUnique({
+    await prisma.serviceOrder.delete({
       where: { id },
-      include: {
-        client: true,
-        device: true,
-        createdByUser: true,
-        history: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
     });
   }
 }

@@ -19,7 +19,7 @@ devicesRouter.use(ensureAuth);
  * /devices:
  *   post:
  *     tags: [Devices]
- *     summary: Cria um equipamento vinculado a um cliente
+ *     summary: Cria um equipamento
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -32,37 +32,43 @@ devicesRouter.use(ensureAuth);
  *             properties:
  *               clientId:
  *                 type: string
- *                 example: cmma137nz0000tj74c4m42w5f
+ *                 example: "cmmxxxxxxxxxxxxxxxxxxxx"
  *               type:
  *                 type: string
- *                 example: PLACA_MAE
+ *                 example: "Notebook"
  *               brand:
  *                 type: string
- *                 example: ASUS
+ *                 nullable: true
+ *                 example: "ASUS"
  *               model:
  *                 type: string
- *                 example: H310CM-HG4
+ *                 nullable: true
+ *                 example: "H310CM-HG4"
  *               serialNumber:
  *                 type: string
- *                 example: 0AM0XH012973
+ *                 nullable: true
+ *                 example: "SN123456"
  *               password:
  *                 type: string
- *                 example: SEM
+ *                 nullable: true
+ *                 example: "senha123"
  *               accessories:
  *                 type: string
- *                 example: COOLER BOX + MEMORIA RAM + SACO
+ *                 nullable: true
+ *                 example: "Carregador"
  *               notes:
  *                 type: string
- *                 example: Sem bateria CMOS
+ *                 nullable: true
+ *                 example: "Sem observações"
  *     responses:
  *       201:
  *         description: Equipamento criado com sucesso
  *       400:
- *         description: Erro de validacao
+ *         description: Erro de validação
  *       401:
- *         description: Nao autenticado
+ *         description: Não autenticado
  *       404:
- *         description: Cliente nao encontrado
+ *         description: Cliente não encontrado
  *   get:
  *     tags: [Devices]
  *     summary: Lista equipamentos
@@ -72,7 +78,7 @@ devicesRouter.use(ensureAuth);
  *       200:
  *         description: Lista de equipamentos
  *       401:
- *         description: Nao autenticado
+ *         description: Não autenticado
  */
 devicesRouter.post("/", (req, res, next) => {
   void devicesController.create(req, res, next);
@@ -101,9 +107,9 @@ devicesRouter.get("/", (req, res, next) => {
  *       200:
  *         description: Equipamento encontrado
  *       401:
- *         description: Nao autenticado
+ *         description: Não autenticado
  *       404:
- *         description: Equipamento nao encontrado
+ *         description: Equipamento não encontrado
  *   put:
  *     tags: [Devices]
  *     summary: Atualiza equipamento por ID
@@ -129,25 +135,31 @@ devicesRouter.get("/", (req, res, next) => {
  *                 type: string
  *               brand:
  *                 type: string
+ *                 nullable: true
  *               model:
  *                 type: string
+ *                 nullable: true
  *               serialNumber:
  *                 type: string
+ *                 nullable: true
  *               password:
  *                 type: string
+ *                 nullable: true
  *               accessories:
  *                 type: string
+ *                 nullable: true
  *               notes:
  *                 type: string
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: Equipamento atualizado com sucesso
  *       400:
- *         description: Erro de validacao
+ *         description: Erro de validação
  *       401:
- *         description: Nao autenticado
+ *         description: Não autenticado
  *       404:
- *         description: Equipamento nao encontrado
+ *         description: Equipamento não encontrado
  *   delete:
  *     tags: [Devices]
  *     summary: Remove equipamento por ID
@@ -164,9 +176,9 @@ devicesRouter.get("/", (req, res, next) => {
  *       204:
  *         description: Equipamento removido com sucesso
  *       401:
- *         description: Nao autenticado
+ *         description: Não autenticado
  *       404:
- *         description: Equipamento nao encontrado
+ *         description: Equipamento não encontrado
  */
 devicesRouter.get("/:id", (req, res, next) => {
   void devicesController.getById(req, res, next);

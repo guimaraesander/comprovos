@@ -1,25 +1,25 @@
 import { Router } from "express";
-import { ensureAuth } from "../../middlewares/auth";
 import { ServiceOrdersController } from "./service-orders.controller";
+import { ensureAuth } from "../../middlewares/auth";
 
-const serviceOrdersRouter = Router();
-const serviceOrdersController = new ServiceOrdersController();
+const controller = new ServiceOrdersController();
+export const serviceOrdersRoutes = Router();
 
 /**
  * @openapi
  * tags:
  *   - name: Service Orders
- *     description: Ordens de servico (OS)
+ *     description: Ordens de serviço (OS)
  */
 
-serviceOrdersRouter.use(ensureAuth);
+serviceOrdersRoutes.use(ensureAuth);
 
 /**
  * @openapi
  * /service-orders:
  *   post:
  *     tags: [Service Orders]
- *     summary: Cria uma ordem de servico
+ *     summary: Cria uma ordem de serviço (status inicial sempre ABERTA)
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -30,101 +30,67 @@ serviceOrdersRouter.use(ensureAuth);
  *             type: object
  *             required: [clientId, deviceId, symptoms]
  *             properties:
- *               clientId:
- *                 type: string
- *               deviceId:
- *                 type: string
+ *               clientId: { type: string }
+ *               deviceId: { type: string }
  *               symptoms:
  *                 type: string
- *                 example: Nao liga e apresenta cheiro de queimado
+ *                 example: "Não liga e apresenta cheiro de queimado"
  *               accessories:
  *                 type: string
- *                 example: Cooler box + memoria RAM + saco
+ *                 nullable: true
  *               observations:
  *                 type: string
- *                 example: Cliente trouxe para teste de funcionamento
- *               status:
- *                 type: string
- *                 enum:
- *                   - ABERTA
- *                   - EM_ANALISE
- *                   - AGUARDANDO_APROVACAO
- *                   - EM_MANUTENCAO
- *                   - FINALIZADA
- *                   - ENTREGUE
- *                   - CANCELADA
+ *                 nullable: true
  *               budgetValue:
  *                 type: number
- *                 example: 150
+ *                 nullable: true
  *               finalValue:
  *                 type: number
- *                 example: 0
- *               webKey:
- *                 type: string
- *               trackingPassword:
- *                 type: string
+ *                 nullable: true
  *     responses:
- *       201:
- *         description: Ordem de servico criada com sucesso
- *       400:
- *         description: Erro de validacao
- *       401:
- *         description: Nao autenticado
- *       404:
- *         description: Cliente/equipamento nao encontrado
+ *       201: { description: OS criada com sucesso }
+ *       400: { description: Erro de validação }
+ *       401: { description: Não autenticado }
+ *       404: { description: Cliente/equipamento não encontrado }
  *   get:
  *     tags: [Service Orders]
- *     summary: Lista ordens de servico
+ *     summary: Lista ordens de serviço
  *     security:
  *       - bearerAuth: []
  *     responses:
- *       200:
- *         description: Lista de ordens de servico
- *       401:
- *         description: Nao autenticado
+ *       200: { description: Lista de OS }
+ *       401: { description: Não autenticado }
  */
-serviceOrdersRouter.post("/", (req, res, next) => {
-  void serviceOrdersController.create(req, res, next);
-});
-
-serviceOrdersRouter.get("/", (req, res, next) => {
-  void serviceOrdersController.list(req, res, next);
-});
+serviceOrdersRoutes.get("/", controller.list.bind(controller));
+serviceOrdersRoutes.post("/", controller.create.bind(controller));
 
 /**
  * @openapi
  * /service-orders/{id}:
  *   get:
  *     tags: [Service Orders]
- *     summary: Busca ordem de servico por ID
+ *     summary: Busca OS por ID
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
- *         description: ID da ordem de servico
+ *         schema: { type: string }
  *     responses:
- *       200:
- *         description: Ordem de servico encontrada
- *       401:
- *         description: Nao autenticado
- *       404:
- *         description: Ordem de servico nao encontrada
+ *       200: { description: OS encontrada }
+ *       401: { description: Não autenticado }
+ *       404: { description: OS não encontrada }
  *   put:
  *     tags: [Service Orders]
- *     summary: Atualiza dados da ordem de servico
+ *     summary: Atualiza dados da OS (sem alterar status)
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
- *         description: ID da ordem de servico
+ *         schema: { type: string }
  *     requestBody:
  *       required: true
  *       content:
@@ -132,57 +98,35 @@ serviceOrdersRouter.get("/", (req, res, next) => {
  *           schema:
  *             type: object
  *             properties:
- *               clientId:
- *                 type: string
- *               deviceId:
- *                 type: string
- *               symptoms:
- *                 type: string
- *               accessories:
- *                 type: string
- *               observations:
- *                 type: string
- *               budgetValue:
- *                 type: number
- *               finalValue:
- *                 type: number
- *               webKey:
- *                 type: string
- *               trackingPassword:
- *                 type: string
+ *               clientId: { type: string }
+ *               deviceId: { type: string }
+ *               symptoms: { type: string }
+ *               accessories: { type: string, nullable: true }
+ *               observations: { type: string, nullable: true }
+ *               budgetValue: { type: number, nullable: true }
+ *               finalValue: { type: number, nullable: true }
  *     responses:
- *       200:
- *         description: Ordem de servico atualizada com sucesso
- *       400:
- *         description: Erro de validacao
- *       401:
- *         description: Nao autenticado
- *       404:
- *         description: Ordem de servico nao encontrada
+ *       200: { description: OS atualizada }
+ *       400: { description: Erro de validação }
+ *       401: { description: Não autenticado }
+ *       404: { description: OS não encontrada }
  */
-serviceOrdersRouter.get("/:id", (req, res, next) => {
-  void serviceOrdersController.getById(req, res, next);
-});
-
-serviceOrdersRouter.put("/:id", (req, res, next) => {
-  void serviceOrdersController.update(req, res, next);
-});
+serviceOrdersRoutes.get("/:id", controller.getById.bind(controller));
+serviceOrdersRoutes.put("/:id", controller.update.bind(controller));
 
 /**
  * @openapi
  * /service-orders/{id}/status:
  *   patch:
  *     tags: [Service Orders]
- *     summary: Atualiza o status da OS e grava historico
+ *     summary: Atualiza o status da OS e grava histórico
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
- *         description: ID da ordem de servico
+ *         schema: { type: string }
  *     requestBody:
  *       required: true
  *       content:
@@ -193,29 +137,31 @@ serviceOrdersRouter.put("/:id", (req, res, next) => {
  *             properties:
  *               status:
  *                 type: string
- *                 enum:
- *                   - ABERTA
- *                   - EM_ANALISE
- *                   - AGUARDANDO_APROVACAO
- *                   - EM_MANUTENCAO
- *                   - FINALIZADA
- *                   - ENTREGUE
- *                   - CANCELADA
- *               note:
- *                 type: string
- *                 example: Equipamento em bancada para reparo
+ *                 enum: [ABERTA, EM_ANALISE, AGUARDANDO_APROVACAO, EM_MANUTENCAO, FINALIZADA, ENTREGUE, CANCELADA]
  *     responses:
- *       200:
- *         description: Status atualizado com sucesso
- *       400:
- *         description: Erro de validacao
- *       401:
- *         description: Nao autenticado
- *       404:
- *         description: Ordem de servico nao encontrada
+ *       200: { description: Status atualizado }
+ *       400: { description: Erro de validação }
+ *       401: { description: Não autenticado }
+ *       404: { description: OS não encontrada }
  */
-serviceOrdersRouter.patch("/:id/status", (req, res, next) => {
-  void serviceOrdersController.updateStatus(req, res, next);
-});
+serviceOrdersRoutes.patch("/:id/status", controller.updateStatus.bind(controller));
 
-export { serviceOrdersRouter };
+/**
+ * @openapi
+ * /service-orders/{id}:
+ *   delete:
+ *     tags: [Service Orders]
+ *     summary: Remove OS por ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       204: { description: OS removida com sucesso }
+ *       401: { description: Não autenticado }
+ *       404: { description: OS não encontrada }
+ */
+serviceOrdersRoutes.delete("/:id", controller.delete.bind(controller));
