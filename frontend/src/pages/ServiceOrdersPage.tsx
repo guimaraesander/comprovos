@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 
 import { PageHeader } from "../components/PageHeader";
@@ -10,7 +10,6 @@ import { FormGrid, Field } from "../components/Form";
 import { AlertError, Muted } from "../components/Alert";
 
 import { listClients, type Client } from "../services/clients";
-import { listDevices, type Device } from "../services/devices";
 import {
   createServiceOrder,
   deleteServiceOrder,
@@ -20,6 +19,8 @@ import {
   type ServiceOrder,
   type ServiceOrderStatus,
 } from "../services/serviceOrders";
+
+import styles from "./ServiceOrdersPage.module.css";
 
 function safeErrorMessage(err: unknown) {
   if (axios.isAxiosError(err)) {
@@ -52,20 +53,47 @@ const STATUS_OPTIONS: ServiceOrderStatus[] = [
 
 type FormState = {
   clientId: string;
-  deviceId: string;
+  clientCpfCnpj: string;
+
+  // “preview” do cliente (somente leitura)
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  clientAddress: string;
+
+  equipmentType: string;
+  equipmentBrand: string;
+  equipmentModel: string;
+  equipmentSerialNumber: string;
+  equipmentPassword: string;
+
   symptoms: string;
   accessories: string;
   observations: string;
+
   budgetValue: string;
   finalValue: string;
 };
 
 const initialForm: FormState = {
   clientId: "",
-  deviceId: "",
+  clientCpfCnpj: "",
+
+  clientName: "",
+  clientPhone: "",
+  clientEmail: "",
+  clientAddress: "",
+
+  equipmentType: "",
+  equipmentBrand: "",
+  equipmentModel: "",
+  equipmentSerialNumber: "",
+  equipmentPassword: "",
+
   symptoms: "",
   accessories: "",
   observations: "",
+
   budgetValue: "",
   finalValue: "",
 };
@@ -80,6 +108,22 @@ function toNumberOrUndefined(v: string) {
 function normalizeText(v: string) {
   const t = v.trim();
   return t.length ? t : "";
+}
+
+function normalizeCpfCnpj(v: string) {
+  return v.replace(/\D/g, "");
+}
+
+function formatClientAddress(c: Client) {
+  const parts = [
+    (c as any).address,
+    (c as any).district,
+    (c as any).city,
+    (c as any).state,
+    (c as any).zipCode,
+  ].filter((x) => typeof x === "string" && x.trim().length > 0);
+
+  return parts.join(" • ");
 }
 
 function truncateOneLine(text: string, max = 70) {
@@ -119,18 +163,20 @@ function statusBadgeStyle(status: ServiceOrderStatus): React.CSSProperties {
   return base;
 }
 
+function equipmentLabel(order: ServiceOrder) {
+  const parts = [order.equipmentType, order.equipmentBrand, order.equipmentModel].filter(Boolean);
+  return parts.join(" ") || "-";
+}
+
 export function ServiceOrdersPage() {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [devices, setDevices] = useState<Device[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // erro “global” (carregar/listar)
   const [pageError, setPageError] = useState<string | null>(null);
 
-  // busy e erro por OS (não trava a tela inteira)
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
   const [rowErrorById, setRowErrorById] = useState<Record<string, string>>({});
 
@@ -140,15 +186,18 @@ export function ServiceOrdersPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  // busy do modal (criar/editar/status/excluir)
   const [modalSaving, setModalSaving] = useState(false);
 
   const [selected, setSelected] = useState<ServiceOrder | null>(null);
   const [form, setForm] = useState<FormState>(initialForm);
   const [nextStatus, setNextStatus] = useState<ServiceOrderStatus>("EM_ANALISE");
 
+  // dropdown CPF
+  const [cpfQuery, setCpfQuery] = useState("");
+  const [cpfOpen, setCpfOpen] = useState(false);
+  const cpfBoxRef = useRef<HTMLDivElement | null>(null);
+
   const clientsById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
-  const devicesById = useMemo(() => new Map(devices.map((d) => [d.id, d])), [devices]);
 
   const sortedOrders = useMemo(() => {
     const list = Array.isArray(orders) ? [...orders] : [];
@@ -156,10 +205,15 @@ export function ServiceOrdersPage() {
     return list;
   }, [orders]);
 
-  const devicesForClient = useMemo(() => {
-    if (!form.clientId) return devices;
-    return devices.filter((d: any) => d.clientId === form.clientId);
-  }, [devices, form.clientId, devices]);
+  const cpfMatches = useMemo(() => {
+    const q = normalizeCpfCnpj(cpfQuery);
+    if (!q) return [];
+    // busca por cpf/cnpj (cpfCnpj do cliente)
+    const hits = clients
+      .filter((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")).startsWith(q))
+      .slice(0, 8);
+    return hits;
+  }, [cpfQuery, clients]);
 
   function setBusy(id: string, value: boolean) {
     setBusyById((prev) => {
@@ -187,14 +241,9 @@ export function ServiceOrdersPage() {
     setPageError(null);
     setLoading(true);
     try {
-      const [ordersData, clientsData, devicesData] = await Promise.all([
-        listServiceOrders(),
-        listClients(),
-        listDevices(),
-      ]);
+      const [ordersData, clientsData] = await Promise.all([listServiceOrders(), listClients()]);
       setOrders(Array.isArray(ordersData) ? ordersData : []);
       setClients(Array.isArray(clientsData) ? clientsData : []);
-      setDevices(Array.isArray(devicesData) ? devicesData : []);
     } catch (err) {
       setPageError(safeErrorMessage(err));
     } finally {
@@ -206,14 +255,9 @@ export function ServiceOrdersPage() {
     setPageError(null);
     setRefreshing(true);
     try {
-      const [ordersData, clientsData, devicesData] = await Promise.all([
-        listServiceOrders(),
-        listClients(),
-        listDevices(),
-      ]);
+      const [ordersData, clientsData] = await Promise.all([listServiceOrders(), listClients()]);
       setOrders(Array.isArray(ordersData) ? ordersData : []);
       setClients(Array.isArray(clientsData) ? clientsData : []);
-      setDevices(Array.isArray(devicesData) ? devicesData : []);
     } catch (err) {
       setPageError(safeErrorMessage(err));
     } finally {
@@ -225,29 +269,26 @@ export function ServiceOrdersPage() {
     void loadAll();
   }, []);
 
-  function deviceLabel(d: Device | any) {
-    const parts = [d.type, d.brand, d.model].filter(Boolean);
-    return parts.join(" ") || d.id;
-  }
-
-  function resolveClientAndDevice(order: ServiceOrder) {
-    const client = order.client ?? clientsById.get(order.clientId) ?? null;
-    const device = order.device ?? devicesById.get(order.deviceId) ?? null;
-    const deviceText = device ? deviceLabel(device as any) : "-";
-    return { client, device, deviceText };
-  }
+  // fecha dropdown clicando fora
+  useEffect(() => {
+    function onDocDown(e: MouseEvent) {
+      const el = cpfBoxRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) setCpfOpen(false);
+    }
+    document.addEventListener("mousedown", onDocDown);
+    return () => document.removeEventListener("mousedown", onDocDown);
+  }, []);
 
   function openCreate() {
     setPageError(null);
-    const firstClientId = clients[0]?.id || "";
-    const list = firstClientId ? devices.filter((d: any) => d.clientId === firstClientId) : devices;
-
     setSelected(null);
-    setForm({
-      ...initialForm,
-      clientId: firstClientId,
-      deviceId: list[0]?.id || "",
-    });
+
+    // ✅ tudo zerado
+    setForm(initialForm);
+    setCpfQuery("");
+    setCpfOpen(false);
+
     setIsCreateOpen(true);
   }
 
@@ -258,24 +299,64 @@ export function ServiceOrdersPage() {
     setIsStatusOpen(false);
     setIsDeleteOpen(false);
     setIsDetailsOpen(false);
+    setCpfOpen(false);
+  }
+
+  function applyClientSelection(c: Client) {
+    const cpf = String((c as any).cpfCnpj || "");
+    setForm((p) => ({
+      ...p,
+      clientId: c.id,
+      clientCpfCnpj: cpf,
+
+      clientName: c.name || "",
+      clientPhone: String((c as any).phone || ""),
+      clientEmail: String((c as any).email || ""),
+      clientAddress: formatClientAddress(c),
+    }));
+
+    setCpfQuery(cpf);
+    setCpfOpen(false);
+  }
+
+  function clearClientSelection() {
+    setForm((p) => ({
+      ...p,
+      clientId: "",
+      clientCpfCnpj: "",
+      clientName: "",
+      clientPhone: "",
+      clientEmail: "",
+      clientAddress: "",
+    }));
   }
 
   async function handleCreate() {
     setPageError(null);
 
     const clientId = normalizeText(form.clientId);
-    const deviceId = normalizeText(form.deviceId);
+    const clientCpfCnpj = normalizeText(form.clientCpfCnpj);
+
+    const equipmentType = normalizeText(form.equipmentType);
     const symptoms = normalizeText(form.symptoms);
 
-    if (!clientId) return setPageError("Selecione um cliente.");
-    if (!deviceId) return setPageError("Selecione um equipamento.");
+    if (!clientId) return setPageError("Informe o CPF/CNPJ e selecione um cliente encontrado.");
+    if (!clientCpfCnpj) return setPageError("Informe o CPF/CNPJ na OS.");
+    if (!equipmentType) return setPageError("Informe o tipo do equipamento.");
     if (!symptoms) return setPageError("Informe os sintomas.");
 
     setModalSaving(true);
     try {
       const created = await createServiceOrder({
         clientId,
-        deviceId,
+        clientCpfCnpj,
+
+        equipmentType,
+        equipmentBrand: normalizeText(form.equipmentBrand) || undefined,
+        equipmentModel: normalizeText(form.equipmentModel) || undefined,
+        equipmentSerialNumber: normalizeText(form.equipmentSerialNumber) || undefined,
+        equipmentPassword: normalizeText(form.equipmentPassword) || undefined,
+
         symptoms,
         accessories: normalizeText(form.accessories) || undefined,
         observations: normalizeText(form.observations) || undefined,
@@ -296,15 +377,33 @@ export function ServiceOrdersPage() {
     setPageError(null);
     setSelected(order);
 
+    const c = order.client ?? clientsById.get(order.clientId) ?? null;
+
     setForm({
       clientId: order.clientId,
-      deviceId: order.deviceId,
+      clientCpfCnpj: order.clientCpfCnpj || "",
+
+      clientName: c?.name || "",
+      clientPhone: String(c?.phone || ""),
+      clientEmail: String(c?.email || ""),
+      clientAddress: c ? formatClientAddress(c as any) : "",
+
+      equipmentType: order.equipmentType || "",
+      equipmentBrand: order.equipmentBrand ?? "",
+      equipmentModel: order.equipmentModel ?? "",
+      equipmentSerialNumber: order.equipmentSerialNumber ?? "",
+      equipmentPassword: order.equipmentPassword ?? "",
+
       symptoms: order.symptoms || "",
       accessories: order.accessories ?? "",
       observations: order.observations ?? "",
+
       budgetValue: order.budgetValue != null ? String(order.budgetValue) : "",
       finalValue: order.finalValue != null ? String(order.finalValue) : "",
     });
+
+    setCpfQuery(order.clientCpfCnpj || "");
+    setCpfOpen(false);
 
     setIsEditOpen(true);
   }
@@ -314,11 +413,14 @@ export function ServiceOrdersPage() {
     setPageError(null);
 
     const clientId = normalizeText(form.clientId);
-    const deviceId = normalizeText(form.deviceId);
+    const clientCpfCnpj = normalizeText(form.clientCpfCnpj);
+
+    const equipmentType = normalizeText(form.equipmentType);
     const symptoms = normalizeText(form.symptoms);
 
-    if (!clientId) return setPageError("Selecione um cliente.");
-    if (!deviceId) return setPageError("Selecione um equipamento.");
+    if (!clientId) return setPageError("Informe o CPF/CNPJ e selecione um cliente encontrado.");
+    if (!clientCpfCnpj) return setPageError("Informe o CPF/CNPJ na OS.");
+    if (!equipmentType) return setPageError("Informe o tipo do equipamento.");
     if (!symptoms) return setPageError("Informe os sintomas.");
 
     setModalSaving(true);
@@ -328,7 +430,14 @@ export function ServiceOrdersPage() {
     try {
       const updated = await updateServiceOrder(selected.id, {
         clientId,
-        deviceId,
+        clientCpfCnpj,
+
+        equipmentType,
+        equipmentBrand: normalizeText(form.equipmentBrand) || null,
+        equipmentModel: normalizeText(form.equipmentModel) || null,
+        equipmentSerialNumber: normalizeText(form.equipmentSerialNumber) || null,
+        equipmentPassword: normalizeText(form.equipmentPassword) || null,
+
         symptoms,
         accessories: normalizeText(form.accessories) || null,
         observations: normalizeText(form.observations) || null,
@@ -422,7 +531,7 @@ export function ServiceOrdersPage() {
     <section className="content-body">
       <PageHeader
         title="Ordens de Serviço"
-        subtitle="Crie e acompanhe ordens de serviço vinculadas a cliente e equipamento."
+        subtitle="Registro de entrada com dados do equipamento preenchidos na OS."
         actions={
           <>
             <Button type="button" variant="secondary" onClick={refresh} disabled={loading || refreshing}>
@@ -447,6 +556,7 @@ export function ServiceOrdersPage() {
                 <th>Nº</th>
                 <th>Status</th>
                 <th>Cliente</th>
+                <th>CPF/CNPJ</th>
                 <th>Equipamento</th>
                 <th>Sintomas</th>
                 <th style={{ width: 240 }}>Ações</th>
@@ -455,13 +565,13 @@ export function ServiceOrdersPage() {
             <tbody>
               {sortedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <Muted>Nenhuma OS cadastrada ainda.</Muted>
                   </td>
                 </tr>
               ) : (
                 sortedOrders.map((o) => {
-                  const { client, deviceText } = resolveClientAndDevice(o);
+                  const client = o.client ?? clientsById.get(o.clientId) ?? null;
                   const { short, truncated } = truncateOneLine(o.symptoms, 70);
 
                   const rowBusy = !!busyById[o.id];
@@ -488,7 +598,8 @@ export function ServiceOrdersPage() {
                       </td>
 
                       <td>{client?.name || "-"}</td>
-                      <td>{deviceText}</td>
+                      <td>{o.clientCpfCnpj || "-"}</td>
+                      <td>{equipmentLabel(o)}</td>
 
                       <td>
                         <span title={o.symptoms}>{short || "-"}</span>
@@ -543,8 +654,8 @@ export function ServiceOrdersPage() {
 
       {/* CREATE */}
       <Modal
-        title="Nova OS"
-        subtitle="Vincule cliente + equipamento e descreva os sintomas."
+        title="Nova OS (Entrada)"
+        subtitle="Digite o CPF/CNPJ para localizar o cliente e preencher os dados do equipamento."
         isOpen={isCreateOpen}
         onClose={closeAllModals}
         disableClose={modalSaving}
@@ -559,105 +670,186 @@ export function ServiceOrdersPage() {
           </>
         }
       >
-        <FormGrid>
-          <Field label="Cliente *">
-            <select
-              value={form.clientId}
-              onChange={(e) => {
-                const nextClientId = e.target.value;
-                const list = nextClientId ? devices.filter((d: any) => d.clientId === nextClientId) : devices;
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Dados do cliente</div>
 
-                setForm((p) => ({
-                  ...p,
-                  clientId: nextClientId,
-                  deviceId: list[0]?.id || "",
-                }));
-              }}
-              disabled={modalSaving}
-            >
-              {clients.length === 0 ? (
-                <option value="">Nenhum cliente encontrado</option>
-              ) : (
-                clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </Field>
+          <FormGrid>
+            <Field label="Buscar por CPF/CNPJ *" full>
+              <div className={styles.cpfBox} ref={cpfBoxRef}>
+                <input
+                  value={cpfQuery}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCpfQuery(v);
+                    setCpfOpen(true);
 
-          <Field label="Equipamento *">
-            <select
-              value={form.deviceId}
-              onChange={(e) => setForm((p) => ({ ...p, deviceId: e.target.value }))}
-              disabled={modalSaving}
-            >
-              {devicesForClient.length === 0 ? (
-                <option value="">Nenhum equipamento encontrado</option>
-              ) : (
-                devicesForClient.map((d: any) => (
-                  <option key={d.id} value={d.id}>
-                    {deviceLabel(d)}
-                  </option>
-                ))
-              )}
-            </select>
-          </Field>
+                    // enquanto digita, limpa seleção (evita “cliente preso”)
+                    clearClientSelection();
 
-          <Field label="Sintomas *" full>
-            <textarea
-              value={form.symptoms}
-              onChange={(e) => setForm((p) => ({ ...p, symptoms: e.target.value }))}
-              rows={4}
-              placeholder="Descreva o problema relatado pelo cliente"
-              disabled={modalSaving}
-            />
-          </Field>
+                    // se usuário colar um cpf/cnpj exato e existir, auto-seleciona
+                    const q = normalizeCpfCnpj(v);
+                    const exact = clients.find((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")) === q);
+                    if (exact) applyClientSelection(exact);
+                  }}
+                  onFocus={() => setCpfOpen(true)}
+                  placeholder="Digite o CPF/CNPJ do cliente…"
+                  disabled={modalSaving}
+                />
 
-          <Field label="Acessórios" full>
-            <input
-              value={form.accessories}
-              onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))}
-              placeholder="Ex.: carregador, cabo"
-              disabled={modalSaving}
-            />
-          </Field>
+                {cpfOpen && cpfQuery.trim().length > 0 && (
+                  <div className={styles.dropdown}>
+                    {cpfMatches.length === 0 ? (
+                      <div className={styles.noResults}>
+                        Nenhum cliente encontrado com esse CPF/CNPJ.
+                      </div>
+                    ) : (
+                      cpfMatches.map((c: any) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className={styles.option}
+                          onClick={() => applyClientSelection(c)}
+                        >
+                          <span className={styles.optionCpf}>{String(c.cpfCnpj || "").trim() || "—"}</span>
+                          <span className={styles.optionName}>{c.name}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </Field>
 
-          <Field label="Observações" full>
-            <textarea
-              value={form.observations}
-              onChange={(e) => setForm((p) => ({ ...p, observations: e.target.value }))}
-              rows={3}
-              placeholder="Observações gerais (opcional)"
-              disabled={modalSaving}
-            />
-          </Field>
+            <Field label="Nome" full>
+              <input value={form.clientName} disabled readOnly placeholder="Preenche ao localizar CPF/CNPJ" />
+            </Field>
 
-          <Field label="Orçamento (R$)">
-            <input
-              value={form.budgetValue}
-              onChange={(e) => setForm((p) => ({ ...p, budgetValue: e.target.value }))}
-              placeholder="Ex.: 150"
-              disabled={modalSaving}
-            />
-          </Field>
+            <Field label="Celular">
+              <input value={form.clientPhone} disabled readOnly placeholder="—" />
+            </Field>
 
-          <Field label="Valor final (R$)">
-            <input
-              value={form.finalValue}
-              onChange={(e) => setForm((p) => ({ ...p, finalValue: e.target.value }))}
-              placeholder="Ex.: 180"
-              disabled={modalSaving}
-            />
-          </Field>
-        </FormGrid>
+            <Field label="Email">
+              <input value={form.clientEmail} disabled readOnly placeholder="—" />
+            </Field>
+
+            <Field label="Endereço" full>
+              <input value={form.clientAddress} disabled readOnly placeholder="—" />
+            </Field>
+
+            <Field label="CPF/CNPJ na OS *" full>
+              <input
+                value={form.clientCpfCnpj}
+                onChange={(e) => setForm((p) => ({ ...p, clientCpfCnpj: e.target.value }))}
+                placeholder="Digite o CPF/CNPJ (obrigatório na OS)"
+                disabled={modalSaving}
+              />
+            </Field>
+          </FormGrid>
+        </div>
+
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Dados do computador</div>
+
+          <FormGrid>
+            <Field label="Tipo do equipamento *">
+              <input
+                value={form.equipmentType}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentType: e.target.value }))}
+                placeholder="Ex.: Desktop, Notebook"
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Marca">
+              <input
+                value={form.equipmentBrand}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentBrand: e.target.value }))}
+                placeholder="Ex.: ASUS"
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Modelo">
+              <input
+                value={form.equipmentModel}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentModel: e.target.value }))}
+                placeholder="Ex.: H310CM-HG4"
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Nº de série">
+              <input
+                value={form.equipmentSerialNumber}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentSerialNumber: e.target.value }))}
+                placeholder="Opcional"
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Senha do equipamento">
+              <input
+                value={form.equipmentPassword}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentPassword: e.target.value }))}
+                placeholder="Opcional"
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Sintomas *" full>
+              <textarea
+                value={form.symptoms}
+                onChange={(e) => setForm((p) => ({ ...p, symptoms: e.target.value }))}
+                rows={4}
+                placeholder="Descreva o problema relatado pelo cliente"
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Acessórios" full>
+              <input
+                value={form.accessories}
+                onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))}
+                placeholder="Ex.: carregador, cabo"
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Observações" full>
+              <textarea
+                value={form.observations}
+                onChange={(e) => setForm((p) => ({ ...p, observations: e.target.value }))}
+                rows={3}
+                placeholder="Observações gerais (opcional)"
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Orçamento (R$)">
+              <input
+                value={form.budgetValue}
+                onChange={(e) => setForm((p) => ({ ...p, budgetValue: e.target.value }))}
+                placeholder="Ex.: 150"
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Valor final (R$)">
+              <input
+                value={form.finalValue}
+                onChange={(e) => setForm((p) => ({ ...p, finalValue: e.target.value }))}
+                placeholder="Ex.: 180"
+                disabled={modalSaving}
+              />
+            </Field>
+          </FormGrid>
+        </div>
       </Modal>
 
       {/* EDIT */}
       <Modal
         title="Editar OS"
-        subtitle="Atualize dados da OS (status é separado)."
+        subtitle="Atualize os dados da OS (status é separado)."
         isOpen={isEditOpen}
         onClose={closeAllModals}
         disableClose={modalSaving}
@@ -672,97 +864,127 @@ export function ServiceOrdersPage() {
           </>
         }
       >
-        <FormGrid>
-          <Field label="Cliente *">
-            <select
-              value={form.clientId}
-              onChange={(e) => {
-                const nextClientId = e.target.value;
-                const list = nextClientId ? devices.filter((d: any) => d.clientId === nextClientId) : devices;
+        {/* Edit reaproveita o mesmo layout do Create (sem dropdown obrigatório) */}
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Dados do cliente</div>
 
-                setForm((p) => ({
-                  ...p,
-                  clientId: nextClientId,
-                  deviceId: list[0]?.id || "",
-                }));
-              }}
-              disabled={modalSaving}
-            >
-              {clients.length === 0 ? (
-                <option value="">Nenhum cliente encontrado</option>
-              ) : (
-                clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </Field>
+          <FormGrid>
+            <Field label="CPF/CNPJ na OS *" full>
+              <input
+                value={form.clientCpfCnpj}
+                onChange={(e) => setForm((p) => ({ ...p, clientCpfCnpj: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
 
-          <Field label="Equipamento *">
-            <select
-              value={form.deviceId}
-              onChange={(e) => setForm((p) => ({ ...p, deviceId: e.target.value }))}
-              disabled={modalSaving}
-            >
-              {devicesForClient.length === 0 ? (
-                <option value="">Nenhum equipamento encontrado</option>
-              ) : (
-                devicesForClient.map((d: any) => (
-                  <option key={d.id} value={d.id}>
-                    {deviceLabel(d)}
-                  </option>
-                ))
-              )}
-            </select>
-          </Field>
+            <Field label="Nome" full>
+              <input value={form.clientName} disabled readOnly />
+            </Field>
 
-          <Field label="Sintomas *" full>
-            <textarea
-              value={form.symptoms}
-              onChange={(e) => setForm((p) => ({ ...p, symptoms: e.target.value }))}
-              rows={4}
-              disabled={modalSaving}
-            />
-          </Field>
+            <Field label="Celular">
+              <input value={form.clientPhone} disabled readOnly />
+            </Field>
 
-          <Field label="Acessórios" full>
-            <input
-              value={form.accessories}
-              onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))}
-              disabled={modalSaving}
-            />
-          </Field>
+            <Field label="Email">
+              <input value={form.clientEmail} disabled readOnly />
+            </Field>
 
-          <Field label="Observações" full>
-            <textarea
-              value={form.observations}
-              onChange={(e) => setForm((p) => ({ ...p, observations: e.target.value }))}
-              rows={3}
-              disabled={modalSaving}
-            />
-          </Field>
+            <Field label="Endereço" full>
+              <input value={form.clientAddress} disabled readOnly />
+            </Field>
+          </FormGrid>
+        </div>
 
-          <Field label="Orçamento (R$)">
-            <input
-              value={form.budgetValue}
-              onChange={(e) => setForm((p) => ({ ...p, budgetValue: e.target.value }))}
-              disabled={modalSaving}
-            />
-          </Field>
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Dados do computador</div>
 
-          <Field label="Valor final (R$)">
-            <input
-              value={form.finalValue}
-              onChange={(e) => setForm((p) => ({ ...p, finalValue: e.target.value }))}
-              disabled={modalSaving}
-            />
-          </Field>
-        </FormGrid>
+          <FormGrid>
+            <Field label="Tipo do equipamento *">
+              <input
+                value={form.equipmentType}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentType: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Marca">
+              <input
+                value={form.equipmentBrand}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentBrand: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Modelo">
+              <input
+                value={form.equipmentModel}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentModel: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Nº de série">
+              <input
+                value={form.equipmentSerialNumber}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentSerialNumber: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Senha do equipamento">
+              <input
+                value={form.equipmentPassword}
+                onChange={(e) => setForm((p) => ({ ...p, equipmentPassword: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Sintomas *" full>
+              <textarea
+                value={form.symptoms}
+                onChange={(e) => setForm((p) => ({ ...p, symptoms: e.target.value }))}
+                rows={4}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Acessórios" full>
+              <input
+                value={form.accessories}
+                onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Observações" full>
+              <textarea
+                value={form.observations}
+                onChange={(e) => setForm((p) => ({ ...p, observations: e.target.value }))}
+                rows={3}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Orçamento (R$)">
+              <input
+                value={form.budgetValue}
+                onChange={(e) => setForm((p) => ({ ...p, budgetValue: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Valor final (R$)">
+              <input
+                value={form.finalValue}
+                onChange={(e) => setForm((p) => ({ ...p, finalValue: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+          </FormGrid>
+        </div>
       </Modal>
 
-      {/* STATUS CONFIRM */}
+      {/* STATUS */}
       <Modal
         title="Alterar status"
         subtitle={selected ? `OS #${selected.osNumber} — status atual: ${STATUS_LABEL[selected.status]}` : ""}
@@ -797,7 +1019,7 @@ export function ServiceOrdersPage() {
         </FormGrid>
       </Modal>
 
-      {/* DELETE CONFIRM */}
+      {/* DELETE */}
       <Modal
         title="Excluir OS"
         subtitle={selected ? `Confirme a exclusão da OS #${selected.osNumber}.` : ""}
@@ -815,29 +1037,7 @@ export function ServiceOrdersPage() {
           </>
         }
       >
-        {selected ? (
-          (() => {
-            const { client, deviceText } = resolveClientAndDevice(selected);
-            return (
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div>
-                    <strong>Cliente:</strong> {client?.name || "-"}
-                  </div>
-                  <div>
-                    <strong>Equipamento:</strong> {deviceText}
-                  </div>
-                  <div>
-                    <strong>Status:</strong> {STATUS_LABEL[selected.status]}
-                  </div>
-                </div>
-                <Muted>Essa ação não pode ser desfeita.</Muted>
-              </div>
-            );
-          })()
-        ) : (
-          <Muted>Essa ação não pode ser desfeita.</Muted>
-        )}
+        <Muted>Essa ação não pode ser desfeita.</Muted>
       </Modal>
 
       {/* DETAILS */}
@@ -854,44 +1054,21 @@ export function ServiceOrdersPage() {
         }
       >
         {selected ? (
-          (() => {
-            const { client, deviceText } = resolveClientAndDevice(selected);
-            return (
-              <div style={{ display: "grid", gap: 12 }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div>
-                    <strong>Cliente:</strong> {client?.name || "-"}
-                  </div>
-                  <div>
-                    <strong>Equipamento:</strong> {deviceText}
-                  </div>
-                  <div>
-                    <strong>Status:</strong> {STATUS_LABEL[selected.status]}
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gap: 6 }}>
-                  <strong>Sintomas</strong>
-                  <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{selected.symptoms || "-"}</div>
-                </div>
-
-                {(selected.observations || selected.accessories) && (
-                  <div style={{ display: "grid", gap: 6 }}>
-                    {selected.accessories && (
-                      <div>
-                        <strong>Acessórios:</strong> {selected.accessories}
-                      </div>
-                    )}
-                    {selected.observations && (
-                      <div>
-                        <strong>Observações:</strong> {selected.observations}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })()
+          <div style={{ display: "grid", gap: 10 }}>
+            <div>
+              <strong>Cliente:</strong> {selected.client?.name || "-"} • <strong>CPF/CNPJ:</strong>{" "}
+              {selected.clientCpfCnpj || "-"}
+            </div>
+            <div>
+              <strong>Equipamento:</strong> {equipmentLabel(selected)}
+            </div>
+            <div>
+              <strong>Status:</strong> {STATUS_LABEL[selected.status]}
+            </div>
+            <div style={{ whiteSpace: "pre-wrap" }}>
+              <strong>Sintomas:</strong> {selected.symptoms || "-"}
+            </div>
+          </div>
         ) : (
           <Muted>Sem dados.</Muted>
         )}

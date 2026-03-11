@@ -223,7 +223,7 @@ a {
   font-size: 14px;
 }
 
-/* Agora as páginas (Clients/Devices/OS/Dashboard) usam "content-body"
+/* Agora as páginas (Clients/OS/Dashboard) usam "content-body"
    mas os detalhes de Card/Table/Form/Buttons/Modal foram migrados para components/ (CSS Modules). */
 .content-body {
   background: #ffffff;

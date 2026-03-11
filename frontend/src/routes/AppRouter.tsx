@@ -5,7 +5,6 @@ import { AppLayout } from "../layouts/AppLayout";
 import { LoginPage } from "../pages/LoginPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { ClientsPage } from "../pages/ClientsPage";
-import { DevicesPage } from "../pages/DevicesPage";
 import { ServiceOrdersPage } from "../pages/ServiceOrdersPage";
 
 export function AppRouter() {
@@ -25,7 +24,6 @@ export function AppRouter() {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/clients" element={<ClientsPage />} />
-          <Route path="/devices" element={<DevicesPage />} />
           <Route path="/service-orders" element={<ServiceOrdersPage />} />
         </Route>
 

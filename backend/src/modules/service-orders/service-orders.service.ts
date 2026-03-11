@@ -7,32 +7,33 @@ import type {
 } from "./service-orders.schemas";
 
 export class ServiceOrdersService {
-  async create(input: CreateServiceOrderInput) {
+  async create(input: CreateServiceOrderInput, createdByUserId?: string) {
     const client = await prisma.client.findUnique({
       where: { id: input.clientId },
       select: { id: true },
     });
     if (!client) throw HttpError.notFound("Cliente não encontrado.");
 
-    const device = await prisma.device.findUnique({
-      where: { id: input.deviceId },
-      select: { id: true, clientId: true },
-    });
-    if (!device) throw HttpError.notFound("Equipamento não encontrado.");
-
-    // regra segura: equipamento deve pertencer ao cliente
-    if (device.clientId !== input.clientId) {
-      throw HttpError.badRequest("O equipamento informado não pertence ao cliente.");
-    }
-
     return prisma.serviceOrder.create({
       data: {
         client: { connect: { id: input.clientId } },
-        device: { connect: { id: input.deviceId } },
+
+        ...(createdByUserId ? { createdByUser: { connect: { id: createdByUserId } } } : {}),
 
         status: "ABERTA",
-        symptoms: input.symptoms,
 
+        // cliente “na OS”
+        clientCpfCnpj: input.clientCpfCnpj,
+
+        // equipamento “na OS”
+        equipmentType: input.equipmentType,
+        equipmentBrand: input.equipmentBrand ?? null,
+        equipmentModel: input.equipmentModel ?? null,
+        equipmentSerialNumber: input.equipmentSerialNumber ?? null,
+        equipmentPassword: input.equipmentPassword ?? null,
+
+        // dados da OS
+        symptoms: input.symptoms,
         accessories: input.accessories ?? null,
         observations: input.observations ?? null,
 
@@ -41,7 +42,6 @@ export class ServiceOrdersService {
       },
       include: {
         client: true,
-        device: true,
       },
     });
   }
@@ -51,7 +51,6 @@ export class ServiceOrdersService {
       orderBy: { createdAt: "desc" },
       include: {
         client: true,
-        device: true,
       },
     });
   }
@@ -61,7 +60,6 @@ export class ServiceOrdersService {
       where: { id },
       include: {
         client: true,
-        device: true,
       },
     });
 
@@ -70,12 +68,9 @@ export class ServiceOrdersService {
   }
 
   async update(id: string, input: UpdateServiceOrderInput) {
-    const current = await this.getById(id);
+    await this.getById(id);
 
-    const nextClientId = input.clientId ?? current.clientId;
-    const nextDeviceId = input.deviceId ?? current.deviceId;
-
-    // valida cliente
+    // se permitir trocar o clientId, valida
     if (input.clientId) {
       const client = await prisma.client.findUnique({
         where: { id: input.clientId },
@@ -84,41 +79,30 @@ export class ServiceOrdersService {
       if (!client) throw HttpError.notFound("Cliente não encontrado.");
     }
 
-    // valida device
-    if (input.deviceId) {
-      const device = await prisma.device.findUnique({
-        where: { id: input.deviceId },
-        select: { id: true, clientId: true },
-      });
-      if (!device) throw HttpError.notFound("Equipamento não encontrado.");
-    }
-
-    // regra: device pertence ao client (no estado final)
-    const deviceCheck = await prisma.device.findUnique({
-      where: { id: nextDeviceId },
-      select: { clientId: true },
-    });
-    if (!deviceCheck) throw HttpError.notFound("Equipamento não encontrado.");
-    if (deviceCheck.clientId !== nextClientId) {
-      throw HttpError.badRequest("O equipamento informado não pertence ao cliente.");
-    }
-
     return prisma.serviceOrder.update({
       where: { id },
       data: {
-        // troca vínculos via connect 
         ...(input.clientId ? { client: { connect: { id: input.clientId } } } : {}),
-        ...(input.deviceId ? { device: { connect: { id: input.deviceId } } } : {}),
+
+        ...(typeof input.clientCpfCnpj === "string" ? { clientCpfCnpj: input.clientCpfCnpj } : {}),
+
+        ...(typeof input.equipmentType === "string" ? { equipmentType: input.equipmentType } : {}),
+        ...(input.equipmentBrand !== undefined ? { equipmentBrand: input.equipmentBrand ?? null } : {}),
+        ...(input.equipmentModel !== undefined ? { equipmentModel: input.equipmentModel ?? null } : {}),
+        ...(input.equipmentSerialNumber !== undefined
+          ? { equipmentSerialNumber: input.equipmentSerialNumber ?? null }
+          : {}),
+        ...(input.equipmentPassword !== undefined ? { equipmentPassword: input.equipmentPassword ?? null } : {}),
 
         ...(typeof input.symptoms === "string" ? { symptoms: input.symptoms } : {}),
         ...(input.accessories !== undefined ? { accessories: input.accessories ?? null } : {}),
         ...(input.observations !== undefined ? { observations: input.observations ?? null } : {}),
+
         ...(input.budgetValue !== undefined ? { budgetValue: input.budgetValue ?? null } : {}),
         ...(input.finalValue !== undefined ? { finalValue: input.finalValue ?? null } : {}),
       },
       include: {
         client: true,
-        device: true,
       },
     });
   }
@@ -126,17 +110,13 @@ export class ServiceOrdersService {
   async updateStatus(id: string, input: UpdateServiceOrderStatusInput) {
     await this.getById(id);
 
-    const deliveredAt = input.status === "ENTREGUE" ? new Date() : undefined;
-
     return prisma.serviceOrder.update({
       where: { id },
       data: {
         status: input.status,
-        ...(deliveredAt ? { deliveredAt } : {}),
       },
       include: {
         client: true,
-        device: true,
       },
     });
   }

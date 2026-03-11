@@ -17,7 +17,6 @@ export function AppLayout() {
             Dashboard
           </NavLink>
           <NavLink to="/clients">Clientes</NavLink>
-          <NavLink to="/devices">Equipamentos</NavLink>
           <NavLink to="/service-orders">Ordens de Serviço</NavLink>
         </nav>
 

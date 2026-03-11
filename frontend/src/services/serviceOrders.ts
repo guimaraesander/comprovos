@@ -14,12 +14,21 @@ export type ServiceOrder = {
   osNumber: number;
 
   clientId: string;
-  deviceId: string;
-
   status: ServiceOrderStatus;
 
   entryDate?: string;
 
+  // dados “congelados” na OS
+  clientCpfCnpj: string;
+
+  // equipamento preenchido na OS
+  equipmentType: string;
+  equipmentBrand?: string | null;
+  equipmentModel?: string | null;
+  equipmentSerialNumber?: string | null;
+  equipmentPassword?: string | null;
+
+  // dados da OS
   symptoms: string;
   accessories?: string | null;
   observations?: string | null;
@@ -30,31 +39,33 @@ export type ServiceOrder = {
   createdAt?: string;
   updatedAt?: string;
 
-  // Se o backend retornar relations (você já está incluindo client/device no backend)
+  // relations (você já está incluindo client no backend)
   client?: {
     id: string;
     name: string;
     phone?: string | null;
     email?: string | null;
-    cpfCnpj?: string | null;
-  } | null;
 
-  device?: {
-    id: string;
-    clientId: string;
-    type: string;
-    brand?: string | null;
-    model?: string | null;
-    serialNumber?: string | null;
+    cpfCnpj?: string | null;
+    address?: string | null;
+    district?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
   } | null;
 };
 
 export type CreateServiceOrderInput = {
   clientId: string;
-  deviceId: string;
+  clientCpfCnpj: string;
+
+  equipmentType: string;
+  equipmentBrand?: string;
+  equipmentModel?: string;
+  equipmentSerialNumber?: string;
+  equipmentPassword?: string;
 
   symptoms: string;
-
   accessories?: string;
   observations?: string;
 
@@ -64,10 +75,15 @@ export type CreateServiceOrderInput = {
 
 export type UpdateServiceOrderInput = {
   clientId?: string;
-  deviceId?: string;
+  clientCpfCnpj?: string;
+
+  equipmentType?: string;
+  equipmentBrand?: string | null;
+  equipmentModel?: string | null;
+  equipmentSerialNumber?: string | null;
+  equipmentPassword?: string | null;
 
   symptoms?: string;
-
   accessories?: string | null;
   observations?: string | null;
 

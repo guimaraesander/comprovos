@@ -19,7 +19,7 @@ serviceOrdersRoutes.use(ensureAuth);
  * /service-orders:
  *   post:
  *     tags: [Service Orders]
- *     summary: Cria uma ordem de serviço (status inicial sempre ABERTA)
+ *     summary: Cria uma OS (entrada) com dados do equipamento preenchidos na própria OS
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -28,33 +28,28 @@ serviceOrdersRoutes.use(ensureAuth);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [clientId, deviceId, symptoms]
+ *             required: [clientId, clientCpfCnpj, equipmentType, symptoms]
  *             properties:
  *               clientId: { type: string }
- *               deviceId: { type: string }
- *               symptoms:
- *                 type: string
- *                 example: "Não liga e apresenta cheiro de queimado"
- *               accessories:
- *                 type: string
- *                 nullable: true
- *               observations:
- *                 type: string
- *                 nullable: true
- *               budgetValue:
- *                 type: number
- *                 nullable: true
- *               finalValue:
- *                 type: number
- *                 nullable: true
+ *               clientCpfCnpj: { type: string, example: "055.092.733-64" }
+ *               equipmentType: { type: string, example: "DESKTOP" }
+ *               equipmentBrand: { type: string, nullable: true, example: "GOLDENTEC" }
+ *               equipmentModel: { type: string, nullable: true, example: "SEM" }
+ *               equipmentSerialNumber: { type: string, nullable: true, example: "0524" }
+ *               equipmentPassword: { type: string, nullable: true, example: "NÃO INFORMADO" }
+ *               symptoms: { type: string, example: "LIGA E NÃO DÁ VÍDEO" }
+ *               accessories: { type: string, nullable: true }
+ *               observations: { type: string, nullable: true }
+ *               budgetValue: { type: number, nullable: true }
+ *               finalValue: { type: number, nullable: true }
  *     responses:
  *       201: { description: OS criada com sucesso }
  *       400: { description: Erro de validação }
  *       401: { description: Não autenticado }
- *       404: { description: Cliente/equipamento não encontrado }
+ *       404: { description: Cliente não encontrado }
  *   get:
  *     tags: [Service Orders]
- *     summary: Lista ordens de serviço
+ *     summary: Lista OS
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -99,7 +94,12 @@ serviceOrdersRoutes.post("/", controller.create.bind(controller));
  *             type: object
  *             properties:
  *               clientId: { type: string }
- *               deviceId: { type: string }
+ *               clientCpfCnpj: { type: string }
+ *               equipmentType: { type: string }
+ *               equipmentBrand: { type: string, nullable: true }
+ *               equipmentModel: { type: string, nullable: true }
+ *               equipmentSerialNumber: { type: string, nullable: true }
+ *               equipmentPassword: { type: string, nullable: true }
  *               symptoms: { type: string }
  *               accessories: { type: string, nullable: true }
  *               observations: { type: string, nullable: true }
@@ -110,16 +110,31 @@ serviceOrdersRoutes.post("/", controller.create.bind(controller));
  *       400: { description: Erro de validação }
  *       401: { description: Não autenticado }
  *       404: { description: OS não encontrada }
+ *   delete:
+ *     tags: [Service Orders]
+ *     summary: Remove OS por ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       204: { description: OS removida com sucesso }
+ *       401: { description: Não autenticado }
+ *       404: { description: OS não encontrada }
  */
 serviceOrdersRoutes.get("/:id", controller.getById.bind(controller));
 serviceOrdersRoutes.put("/:id", controller.update.bind(controller));
+serviceOrdersRoutes.delete("/:id", controller.delete.bind(controller));
 
 /**
  * @openapi
  * /service-orders/{id}/status:
  *   patch:
  *     tags: [Service Orders]
- *     summary: Atualiza o status da OS e grava histórico
+ *     summary: Atualiza o status da OS
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -145,23 +160,3 @@ serviceOrdersRoutes.put("/:id", controller.update.bind(controller));
  *       404: { description: OS não encontrada }
  */
 serviceOrdersRoutes.patch("/:id/status", controller.updateStatus.bind(controller));
-
-/**
- * @openapi
- * /service-orders/{id}:
- *   delete:
- *     tags: [Service Orders]
- *     summary: Remove OS por ID
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       204: { description: OS removida com sucesso }
- *       401: { description: Não autenticado }
- *       404: { description: OS não encontrada }
- */
-serviceOrdersRoutes.delete("/:id", controller.delete.bind(controller));

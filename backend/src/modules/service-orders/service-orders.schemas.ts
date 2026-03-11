@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const toOptionalString = z.preprocess((v) => {
+  if (v === null || v === undefined) return undefined;
   if (typeof v !== "string") return v;
   const t = v.trim();
   return t.length === 0 ? undefined : t;
@@ -29,23 +30,38 @@ export const serviceOrderStatusSchema = z.enum([
 ]);
 
 export const createServiceOrderSchema = z.object({
+  // cliente existe no sistema
   clientId: z.string().min(1),
-  deviceId: z.string().min(1),
 
+  // CPF/CNPJ obrigatório na OS (registro “de entrada”)
+  clientCpfCnpj: z.string().min(1),
+
+  // equipamento preenchido na OS (não é entidade separada)
+  equipmentType: z.string().min(1),
+  equipmentBrand: toOptionalString,
+  equipmentModel: toOptionalString,
+  equipmentSerialNumber: toOptionalString,
+  equipmentPassword: toOptionalString,
+
+  // dados da OS
   symptoms: z.string().min(1),
-
   accessories: toOptionalString,
   observations: toOptionalString,
 
-  // valores (se ainda não tiver, pode mandar vazio e fica undefined)
   budgetValue: toOptionalNumber,
   finalValue: toOptionalNumber,
 });
 
 export const updateServiceOrderSchema = z.object({
-  // permitir trocar vínculo, se seu sistema permitir
+  // normalmente NÃO muda clientId depois, mas se quiser permitir, deixa optional
   clientId: z.string().min(1).optional(),
-  deviceId: z.string().min(1).optional(),
+  clientCpfCnpj: z.string().min(1).optional(),
+
+  equipmentType: z.string().min(1).optional(),
+  equipmentBrand: toOptionalString,
+  equipmentModel: toOptionalString,
+  equipmentSerialNumber: toOptionalString,
+  equipmentPassword: toOptionalString,
 
   symptoms: z.string().min(1).optional(),
   accessories: toOptionalString,

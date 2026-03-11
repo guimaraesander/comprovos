@@ -52,63 +52,51 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  devices       Device[]
   serviceOrders ServiceOrder[]
 
   @@map("clients")
 }
 
-model Device {
-  id             String   @id @default(cuid())
-  clientId       String
-  type           String   // Ex.: Placa-mae, Notebook, Desktop
-  brand          String?  // Ex.: ASUS
-  model          String?  // Ex.: H310CM-HG4
-  serialNumber   String?  // Numero de serie
-  password       String?  // Senha (se aplicavel)
-  accessories    String?  // Texto livre
-  notes          String?  // Observacoes gerais do equipamento
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  serviceOrders  ServiceOrder[]
-
-  @@index([clientId])
-  @@map("devices")
-}
-
 model ServiceOrder {
-  id                 String             @id @default(cuid())
-  osNumber           Int                @unique @default(autoincrement())
-  clientId           String
-  deviceId           String
-  createdByUserId    String?
-  entryDate          DateTime           @default(now())
+  id              String             @id @default(cuid())
+  osNumber         Int                @unique @default(autoincrement())
 
-  symptoms           String
-  accessories        String?            // Acessorios recebidos nessa entrada (texto da OS)
-  observations       String?            // Observacoes gerais da OS
+  clientId         String
+  createdByUserId  String?
+  entryDate        DateTime           @default(now())
 
-  status             ServiceOrderStatus @default(ABERTA)
+  // ✅ dados do cliente "congelados" na OS
+  clientCpfCnpj    String
 
-  budgetValue        Decimal?           @db.Decimal(10, 2)
-  finalValue         Decimal?           @db.Decimal(10, 2)
+  // ✅ dados do equipamento preenchidos na OS (não é entidade separada)
+  equipmentType          String
+  equipmentBrand         String?
+  equipmentModel         String?
+  equipmentSerialNumber  String?
+  equipmentPassword      String?
 
-  webKey             String?            @unique
-  trackingPassword   String?
+  // dados da OS
+  symptoms         String
+  accessories      String?
+  observations     String?
 
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  status           ServiceOrderStatus @default(ABERTA)
 
-  client             Client             @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  device             Device             @relation(fields: [deviceId], references: [id], onDelete: Restrict)
-  createdByUser      User?              @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  budgetValue      Decimal?           @db.Decimal(10, 2)
+  finalValue       Decimal?           @db.Decimal(10, 2)
 
-  history            ServiceOrderHistory[]
+  webKey           String?            @unique
+  trackingPassword String?
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  client           Client             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdByUser    User?              @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  history          ServiceOrderHistory[]
 
   @@index([clientId])
-  @@index([deviceId])
   @@index([status])
   @@map("service_orders")
 }

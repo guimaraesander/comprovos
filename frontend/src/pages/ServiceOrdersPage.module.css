@@ -1,0 +1,68 @@
+/* frontend/src/pages/ServiceOrdersPage.module.css */
+
+.section {
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.sectionTitle {
+  font-weight: 800;
+  font-size: 13px;
+  color: #344054;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.cpfBox {
+  position: relative;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 16px 32px rgba(16, 24, 40, 0.18);
+  overflow: hidden;
+}
+
+.option {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 10px 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: rgba(23, 92, 211, 0.08);
+}
+
+.optionCpf {
+  font-weight: 800;
+  color: #175cd3;
+  font-size: 13px;
+}
+
+.optionName {
+  color: #344054;
+  font-weight: 700;
+  font-size: 13px;
+  opacity: 0.95;
+}
+
+.noResults {
+  padding: 10px 12px;
+  color: #667085;
+  font-size: 13px;
+}

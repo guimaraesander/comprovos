@@ -7,8 +7,7 @@ const swaggerDefinition = {
   info: {
     title: "ComprovOS API",
     version: "1.0.0",
-    description:
-      "API do sistema ComprovOS (Ordens de Servico e acompanhamento em nuvem)",
+    description: "API do sistema ComprovOS (Ordens de Serviço e acompanhamento em nuvem)",
   },
   servers: [
     {
@@ -33,6 +32,7 @@ const swaggerDefinition = {
           password: { type: "string", example: "123456" },
         },
       },
+
       Client: {
         type: "object",
         properties: {
@@ -51,34 +51,27 @@ const swaggerDefinition = {
           updatedAt: { type: "string", format: "date-time" },
         },
       },
-      Device: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          clientId: { type: "string" },
-          type: { type: "string" },
-          brand: { type: "string", nullable: true },
-          model: { type: "string", nullable: true },
-          serialNumber: { type: "string", nullable: true },
-          password: { type: "string", nullable: true },
-          accessories: { type: "string", nullable: true },
-          notes: { type: "string", nullable: true },
-          createdAt: { type: "string", format: "date-time" },
-          updatedAt: { type: "string", format: "date-time" },
-        },
-      },
+
       ServiceOrder: {
         type: "object",
         properties: {
           id: { type: "string" },
           osNumber: { type: "integer" },
+
           clientId: { type: "string" },
-          deviceId: { type: "string" },
-          createdByUserId: { type: "string", nullable: true },
+          clientCpfCnpj: { type: "string" },
+
+          equipmentType: { type: "string" },
+          equipmentBrand: { type: "string", nullable: true },
+          equipmentModel: { type: "string", nullable: true },
+          equipmentSerialNumber: { type: "string", nullable: true },
+          equipmentPassword: { type: "string", nullable: true },
+
           entryDate: { type: "string", format: "date-time" },
           symptoms: { type: "string" },
           accessories: { type: "string", nullable: true },
           observations: { type: "string", nullable: true },
+
           status: {
             type: "string",
             enum: [
@@ -91,10 +84,10 @@ const swaggerDefinition = {
               "CANCELADA",
             ],
           },
+
           budgetValue: { type: "string", nullable: true, example: "150.00" },
           finalValue: { type: "string", nullable: true, example: "180.00" },
-          webKey: { type: "string", nullable: true },
-          trackingPassword: { type: "string", nullable: true },
+
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
         },

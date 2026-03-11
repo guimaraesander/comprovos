@@ -6,55 +6,34 @@ function isDev() {
   return (process.env.NODE_ENV || "").toLowerCase() === "development";
 }
 
-function isHttpError(err: unknown): err is HttpError {
-  return (
-    err instanceof HttpError ||
-    (typeof err === "object" && err !== null && "statusCode" in err)
-  );
-}
-
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
-  // ✅ Loga sempre em DEV (sem esconder erro)
+  // Log (em dev sempre; em prod apenas o necessário)
   if (isDev()) {
     // eslint-disable-next-line no-console
-    console.error("[ERROR]", {
+    console.error({
       method: req.method,
       url: req.originalUrl,
-      userId: req.user?.id,
       err,
     });
-
-    if (err instanceof Error) {
-      // eslint-disable-next-line no-console
-      console.error(err.stack);
-    }
   }
 
-  // Zod validation errors
+  // Zod -> 400
   if (err instanceof ZodError) {
     return res.status(400).json({
       message: "Dados inválidos.",
-      issues: err.issues.map((i) => ({
-        path: i.path.join("."),
-        message: i.message,
-        code: i.code,
-      })),
+      issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
     });
   }
 
-  // Nosso HttpError
-  if (isHttpError(err)) {
-    const statusCode = (err as any).statusCode ?? 500;
-    const message = (err as any).message ?? "Erro interno do servidor.";
-    const details = (err as any).details;
-
-    return res.status(statusCode).json({
-      message,
-      ...(details ? { details } : {}),
+  // HttpError -> status correto
+  if (err instanceof HttpError) {
+    return res.status(err.statusCode).json({
+      message: err.message,
+      ...(isDev() && err.details ? { details: err.details } : {}),
     });
   }
 
-  // Erro genérico
+  // Fallback -> 500
   return res.status(500).json({
     message: "Erro interno do servidor.",
   });

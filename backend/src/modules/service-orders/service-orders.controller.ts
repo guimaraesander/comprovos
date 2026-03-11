@@ -32,7 +32,10 @@ export class ServiceOrdersController {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const input = createServiceOrderSchema.parse(req.body);
-      const created = await service.create(input);
+
+      const createdByUserId = (req as any).user?.id as string | undefined;
+
+      const created = await service.create(input, createdByUserId);
       return res.status(201).json(created);
     } catch (err) {
       return next(err);

@@ -1,0 +1,1716 @@
+### DUMP BACKEND NEEDED FILES CONTENT ###
+Generated: 2026-03-10 21:01:33
+
+
+============================================================
+PATH: backend\package.json
+============================================================
+
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:push": "prisma db push",
+    "seed": "ts-node-dev --transpile-only --exit-child prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node-dev --transpile-only --exit-child prisma/seed.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@prisma/client": "^6.15.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.12.0",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "prisma": "^6.15.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.2"
+  }
+}
+
+
+============================================================
+PATH: backend\tsconfig.json
+============================================================
+
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}
+
+
+============================================================
+PATH: backend\src\server.ts
+============================================================
+
+import "dotenv/config";
+import { app } from "./app";
+import { env } from "./config/env";
+
+const PORT = Number(env.PORT) || 3333;
+
+app.listen(PORT, () => {
+  console.log(`ComprovOS API rodando na porta ${PORT}`);
+});
+
+
+============================================================
+PATH: backend\src\app.ts
+============================================================
+
+import express from "express";
+import cors from "cors";
+import { routes } from "./routes";
+import { errorHandler } from "./middlewares/error-handler";
+import { setupSwagger } from "./config/swagger";
+
+export const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "ComprovOS API",
+  });
+});
+
+app.use("/api", routes);
+
+// Swagger
+setupSwagger(app);
+
+// Handler de erros (deixar por último)
+app.use(errorHandler);
+
+
+============================================================
+PATH: backend\src\routes\index.ts
+============================================================
+
+import { Router } from "express";
+
+import { authRouter } from "../modules/auth/auth.routes";
+import { clientsRouter } from "../modules/clients/clients.routes";
+import { serviceOrdersRoutes } from "../modules/service-orders/service-orders.routes";
+
+export const routes = Router();
+
+routes.use("/auth", authRouter);
+routes.use("/clients", clientsRouter);
+routes.use("/service-orders", serviceOrdersRoutes);
+
+
+============================================================
+PATH: backend\src\config\env.ts
+============================================================
+
+export const env = {
+  PORT: process.env.PORT || "3333",
+  JWT_SECRET: process.env.JWT_SECRET || "troque-por-uma-chave-segura",
+  NODE_ENV: process.env.NODE_ENV || "development",
+};
+
+
+============================================================
+PATH: backend\src\config\swagger.ts
+============================================================
+
+import swaggerJSDoc from "swagger-jsdoc";
+import { Express } from "express";
+import swaggerUi from "swagger-ui-express";
+
+const swaggerDefinition = {
+  openapi: "3.0.0",
+  info: {
+    title: "ComprovOS API",
+    version: "1.0.0",
+    description: "API do sistema ComprovOS (Ordens de Serviço e acompanhamento em nuvem)",
+  },
+  servers: [
+    {
+      url: "http://localhost:3333/api",
+      description: "Servidor local",
+    },
+  ],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+      },
+    },
+    schemas: {
+      LoginInput: {
+        type: "object",
+        required: ["email", "password"],
+        properties: {
+          email: { type: "string", example: "admin@comprovos.com" },
+          password: { type: "string", example: "123456" },
+        },
+      },
+
+      Client: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          phone: { type: "string", nullable: true },
+          email: { type: "string", nullable: true },
+          cpfCnpj: { type: "string", nullable: true },
+          rgIe: { type: "string", nullable: true },
+          address: { type: "string", nullable: true },
+          district: { type: "string", nullable: true },
+          city: { type: "string", nullable: true },
+          state: { type: "string", nullable: true },
+          zipCode: { type: "string", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+
+      ServiceOrder: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          osNumber: { type: "integer" },
+
+          clientId: { type: "string" },
+          clientCpfCnpj: { type: "string" },
+
+          equipmentType: { type: "string" },
+          equipmentBrand: { type: "string", nullable: true },
+          equipmentModel: { type: "string", nullable: true },
+          equipmentSerialNumber: { type: "string", nullable: true },
+          equipmentPassword: { type: "string", nullable: true },
+
+          entryDate: { type: "string", format: "date-time" },
+          symptoms: { type: "string" },
+          accessories: { type: "string", nullable: true },
+          observations: { type: "string", nullable: true },
+
+          status: {
+            type: "string",
+            enum: [
+              "ABERTA",
+              "EM_ANALISE",
+              "AGUARDANDO_APROVACAO",
+              "EM_MANUTENCAO",
+              "FINALIZADA",
+              "ENTREGUE",
+              "CANCELADA",
+            ],
+          },
+
+          budgetValue: { type: "string", nullable: true, example: "150.00" },
+          finalValue: { type: "string", nullable: true, example: "180.00" },
+
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+    },
+  },
+};
+
+const options: swaggerJSDoc.Options = {
+  definition: swaggerDefinition,
+  apis: ["src/modules/**/*.routes.ts"],
+};
+
+const swaggerSpec = swaggerJSDoc(options);
+
+export function setupSwagger(app: Express) {
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
+
+
+============================================================
+PATH: backend\src\lib\prisma.ts
+============================================================
+
+import { PrismaClient } from "@prisma/client";
+
+declare global {
+  // eslint-disable-next-line no-var
+  var prismaGlobal: PrismaClient | undefined;
+}
+
+export const prisma =
+  global.prismaGlobal ??
+  new PrismaClient({
+    log: ["error", "warn"],
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  global.prismaGlobal = prisma;
+}
+
+
+============================================================
+PATH: backend\src\middlewares\auth.ts
+============================================================
+
+import { NextFunction, Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import { env } from "../config/env";
+
+export type AuthUser = {
+  id: string;
+  role: "ADMIN" | "TECNICO";
+  email: string;
+  name: string;
+};
+
+type JwtPayload = {
+  sub: string;
+  role: "ADMIN" | "TECNICO";
+  email: string;
+  name: string;
+};
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthUser;
+    }
+  }
+}
+
+export function ensureAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({
+      message: "Token nao informado",
+    });
+  }
+
+  const [scheme, token] = authHeader.split(" ");
+
+  if (scheme !== "Bearer" || !token) {
+    return res.status(401).json({
+      message: "Token invalido",
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+
+    req.user = {
+      id: decoded.sub,
+      role: decoded.role,
+      email: decoded.email,
+      name: decoded.name,
+    };
+
+    return next();
+  } catch {
+    return res.status(401).json({
+      message: "Token invalido ou expirado",
+    });
+  }
+}
+
+
+============================================================
+PATH: backend\src\middlewares\error-handler.ts
+============================================================
+
+import { NextFunction, Request, Response } from "express";
+import { ZodError } from "zod";
+import { HttpError } from "../utils/http-error";
+
+function isDev() {
+  return (process.env.NODE_ENV || "").toLowerCase() === "development";
+}
+
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+  // Log (em dev sempre; em prod apenas o necessário)
+  if (isDev()) {
+    // eslint-disable-next-line no-console
+    console.error({
+      method: req.method,
+      url: req.originalUrl,
+      err,
+    });
+  }
+
+  // Zod -> 400
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      message: "Dados inválidos.",
+      issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+    });
+  }
+
+  // HttpError -> status correto
+  if (err instanceof HttpError) {
+    return res.status(err.statusCode).json({
+      message: err.message,
+      ...(isDev() && err.details ? { details: err.details } : {}),
+    });
+  }
+
+  // Fallback -> 500
+  return res.status(500).json({
+    message: "Erro interno do servidor.",
+  });
+}
+
+
+============================================================
+PATH: backend\src\utils\http-error.ts
+============================================================
+
+export type HttpErrorPayload = {
+  message: string;
+  statusCode: number;
+  details?: unknown;
+};
+
+export class HttpError extends Error {
+  public statusCode: number;
+  public details?: unknown;
+
+  constructor(payload: HttpErrorPayload) {
+    super(payload.message);
+    this.name = "HttpError";
+    this.statusCode = payload.statusCode;
+    this.details = payload.details;
+  }
+
+  static badRequest(message: string, details?: unknown) {
+    return new HttpError({ message, statusCode: 400, details });
+  }
+
+  static unauthorized(message: string = "Não autorizado.") {
+    return new HttpError({ message, statusCode: 401 });
+  }
+
+  static forbidden(message: string = "Acesso negado.") {
+    return new HttpError({ message, statusCode: 403 });
+  }
+
+  static notFound(message: string) {
+    return new HttpError({ message, statusCode: 404 });
+  }
+
+  static conflict(message: string, details?: unknown) {
+    return new HttpError({ message, statusCode: 409, details });
+  }
+
+  static internal(message: string = "Erro interno do servidor.", details?: unknown) {
+    return new HttpError({ message, statusCode: 500, details });
+  }
+}
+
+
+============================================================
+PATH: backend\src\utils\get-required-param.ts
+============================================================
+
+import { HttpError } from "./http-error";
+
+export function getRequiredParam(
+  params: Record<string, unknown>,
+  key: string
+): string {
+  const value = params?.[key];
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw HttpError.badRequest(`Parâmetro "${key}" é obrigatório.`);
+  }
+
+  return value.trim();
+}
+
+
+============================================================
+PATH: backend\prisma\schema.prisma
+============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TECNICO
+}
+
+enum ServiceOrderStatus {
+  ABERTA
+  EM_ANALISE
+  AGUARDANDO_APROVACAO
+  EM_MANUTENCAO
+  FINALIZADA
+  ENTREGUE
+  CANCELADA
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(TECNICO)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  serviceOrders ServiceOrder[] @relation("CreatedByUser")
+
+  @@map("users")
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  cpfCnpj   String?
+  rgIe      String?
+  address   String?
+  district  String?
+  city      String?
+  state     String?
+  zipCode   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  serviceOrders ServiceOrder[]
+
+  @@map("clients")
+}
+
+model ServiceOrder {
+  id              String             @id @default(cuid())
+  osNumber         Int                @unique @default(autoincrement())
+
+  clientId         String
+  createdByUserId  String?
+  entryDate        DateTime           @default(now())
+
+  // ✅ dados do cliente "congelados" na OS
+  clientCpfCnpj    String
+
+  // ✅ dados do equipamento preenchidos na OS (não é entidade separada)
+  equipmentType          String
+  equipmentBrand         String?
+  equipmentModel         String?
+  equipmentSerialNumber  String?
+  equipmentPassword      String?
+
+  // dados da OS
+  symptoms         String
+  accessories      String?
+  observations     String?
+
+  status           ServiceOrderStatus @default(ABERTA)
+
+  budgetValue      Decimal?           @db.Decimal(10, 2)
+  finalValue       Decimal?           @db.Decimal(10, 2)
+
+  webKey           String?            @unique
+  trackingPassword String?
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  client           Client             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdByUser    User?              @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  history          ServiceOrderHistory[]
+
+  @@index([clientId])
+  @@index([status])
+  @@map("service_orders")
+}
+
+model ServiceOrderHistory {
+  id             String             @id @default(cuid())
+  serviceOrderId String
+  previousStatus ServiceOrderStatus?
+  newStatus      ServiceOrderStatus
+  note           String?
+  createdAt      DateTime           @default(now())
+
+  serviceOrder   ServiceOrder       @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+
+  @@index([serviceOrderId])
+  @@map("service_order_history")
+}
+
+
+============================================================
+PATH: backend\prisma\seed.ts
+============================================================
+
+import "dotenv/config";
+import bcrypt from "bcryptjs";
+import { PrismaClient, UserRole } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  const adminEmail = "admin@comprovos.com";
+  const adminPassword = "123456";
+
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
+
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: adminEmail },
+  });
+
+  if (existingAdmin) {
+    await prisma.user.update({
+      where: { email: adminEmail },
+      data: {
+        name: "Admin ComprovOS",
+        passwordHash,
+        role: UserRole.ADMIN,
+      },
+    });
+
+    console.log("✅ Admin atualizado com sucesso.");
+  } else {
+    await prisma.user.create({
+      data: {
+        name: "Admin ComprovOS",
+        email: adminEmail,
+        passwordHash,
+        role: UserRole.ADMIN,
+      },
+    });
+
+    console.log("✅ Admin criado com sucesso.");
+  }
+
+  console.log("📧 Email:", adminEmail);
+  console.log("🔑 Senha:", adminPassword);
+}
+
+main()
+  .catch((error) => {
+    console.error("❌ Erro ao executar seed:", error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+
+
+============================================================
+PATH: backend\src\modules\auth\auth.routes.ts
+============================================================
+
+import { Router } from "express";
+import { AuthController } from "./auth.controller";
+import { ensureAuth } from "../../middlewares/auth";
+
+const authRouter = Router();
+const authController = new AuthController();
+
+/**
+ * @openapi
+ * tags:
+ *   - name: Auth
+ *     description: Autenticacao e sessao
+ */
+
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Realiza login e retorna token JWT
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginInput'
+ *     responses:
+ *       200:
+ *         description: Login realizado com sucesso
+ *       400:
+ *         description: Erro de validacao
+ *       401:
+ *         description: Credenciais invalidas
+ */
+authRouter.post("/login", (req, res, next) => {
+  void authController.login(req, res, next);
+});
+
+/**
+ * @openapi
+ * /auth/me:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Retorna dados do usuario autenticado
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Usuario autenticado retornado com sucesso
+ *       401:
+ *         description: Token nao informado ou invalido
+ */
+authRouter.get("/me", ensureAuth, (req, res, next) => {
+  void authController.me(req, res, next);
+});
+
+export { authRouter };
+
+
+============================================================
+PATH: backend\src\modules\auth\auth.controller.ts
+============================================================
+
+import { Request, Response, NextFunction } from "express";
+import { AuthService } from "./auth.service";
+import { loginSchema } from "./auth.schemas";
+
+const authService = new AuthService();
+
+export class AuthController {
+  async login(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = loginSchema.parse(req.body);
+      const result = await authService.login(data);
+
+      return res.status(200).json(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async me(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          message: "Usuario nao autenticado",
+        });
+      }
+
+      const user = await authService.me(req.user.id);
+
+      return res.status(200).json(user);
+    } catch (error) {
+      return next(error);
+    }
+  }
+}
+
+
+============================================================
+PATH: backend\src\modules\auth\auth.service.ts
+============================================================
+
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { prisma } from "../../lib/prisma";
+import { HttpError } from "../../utils/http-error";
+import type { LoginInput } from "./auth.schemas";
+
+type LoginResult = {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+};
+
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.trim().length === 0) {
+    throw HttpError.internal("JWT_SECRET não configurado.");
+  }
+  return secret;
+}
+
+export class AuthService {
+  async login(input: LoginInput): Promise<LoginResult> {
+    const normalizedEmail = input.email.trim().toLowerCase();
+
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        passwordHash: true,
+      },
+    });
+
+    // ✅ credenciais inválidas => 401
+    if (!user) {
+      throw HttpError.unauthorized("Credenciais inválidas.");
+    }
+
+    const ok = await bcrypt.compare(input.password, user.passwordHash);
+    if (!ok) {
+      throw HttpError.unauthorized("Credenciais inválidas.");
+    }
+
+    const secret = getJwtSecret();
+
+    const token = jwt.sign(
+      { sub: user.id, role: user.role, email: user.email, name: user.name },
+      secret,
+      { expiresIn: "7d" }
+    );
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    };
+  }
+
+  async me(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+    });
+
+    if (!user) {
+      throw HttpError.notFound("Usuário não encontrado.");
+    }
+
+    return user;
+  }
+}
+
+
+============================================================
+PATH: backend\src\modules\auth\auth.schemas.ts
+============================================================
+
+import { z } from "zod";
+
+export const loginSchema = z.object({
+  email: z.string().email("Email invalido"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
+
+
+============================================================
+PATH: backend\src\modules\clients\clients.routes.ts
+============================================================
+
+import { Router } from "express";
+import { ClientsController } from "./clients.controller";
+import { ensureAuth } from "../../middlewares/auth";
+
+const clientsRouter = Router();
+const clientsController = new ClientsController();
+
+/**
+ * @openapi
+ * tags:
+ *   - name: Clients
+ *     description: Cadastro e gerenciamento de clientes
+ */
+
+clientsRouter.use(ensureAuth);
+
+/**
+ * @openapi
+ * /clients:
+ *   post:
+ *     tags: [Clients]
+ *     summary: Cria um cliente
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Joao Alves
+ *               phone:
+ *                 type: string
+ *                 example: "88998034589"
+ *               email:
+ *                 type: string
+ *                 example: joaoalves@email.com
+ *               cpfCnpj:
+ *                 type: string
+ *                 example: "12345678910"
+ *               rgIe:
+ *                 type: string
+ *                 nullable: true
+ *               address:
+ *                 type: string
+ *                 example: Avenida Santos Dumont, 455
+ *               district:
+ *                 type: string
+ *                 example: Centro
+ *               city:
+ *                 type: string
+ *                 example: Fortaleza
+ *               state:
+ *                 type: string
+ *                 example: CE
+ *               zipCode:
+ *                 type: string
+ *                 example: "63500000"
+ *     responses:
+ *       201:
+ *         description: Cliente criado com sucesso
+ *       400:
+ *         description: Erro de validacao
+ *       401:
+ *         description: Nao autenticado
+ *   get:
+ *     tags: [Clients]
+ *     summary: Lista clientes
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de clientes
+ *       401:
+ *         description: Nao autenticado
+ */
+clientsRouter.post("/", (req, res, next) => {
+  void clientsController.create(req, res, next);
+});
+
+clientsRouter.get("/", (req, res, next) => {
+  void clientsController.list(req, res, next);
+});
+
+/**
+ * @openapi
+ * /clients/{id}:
+ *   get:
+ *     tags: [Clients]
+ *     summary: Busca cliente por ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do cliente
+ *     responses:
+ *       200:
+ *         description: Cliente encontrado
+ *       401:
+ *         description: Nao autenticado
+ *       404:
+ *         description: Cliente nao encontrado
+ *   put:
+ *     tags: [Clients]
+ *     summary: Atualiza cliente por ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do cliente
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               cpfCnpj:
+ *                 type: string
+ *               rgIe:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               district:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               state:
+ *                 type: string
+ *               zipCode:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Cliente atualizado com sucesso
+ *       400:
+ *         description: Erro de validacao
+ *       401:
+ *         description: Nao autenticado
+ *       404:
+ *         description: Cliente nao encontrado
+ *   delete:
+ *     tags: [Clients]
+ *     summary: Remove cliente por ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do cliente
+ *     responses:
+ *       204:
+ *         description: Cliente removido com sucesso
+ *       401:
+ *         description: Nao autenticado
+ *       404:
+ *         description: Cliente nao encontrado
+ */
+clientsRouter.get("/:id", (req, res, next) => {
+  void clientsController.getById(req, res, next);
+});
+
+clientsRouter.put("/:id", (req, res, next) => {
+  void clientsController.update(req, res, next);
+});
+
+clientsRouter.delete("/:id", (req, res, next) => {
+  void clientsController.delete(req, res, next);
+});
+
+export { clientsRouter };
+
+
+============================================================
+PATH: backend\src\modules\clients\clients.controller.ts
+============================================================
+
+import { NextFunction, Request, Response } from "express";
+import { ClientsService } from "./clients.service";
+import {
+  createClientSchema,
+  updateClientSchema,
+} from "./clients.schemas";
+import { getRequiredParam } from "../../shared/http/get-required-param";
+
+const clientsService = new ClientsService();
+
+type IdParams = {
+  id: string;
+};
+
+export class ClientsController {
+  async create(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const data = createClientSchema.parse(req.body);
+      const client = await clientsService.create(data);
+
+      res.status(201).json(client);
+      return;
+    } catch (error) {
+      next(error);
+      return;
+    }
+  }
+
+  async list(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const clients = await clientsService.list();
+
+      res.status(200).json(clients);
+      return;
+    } catch (error) {
+      next(error);
+      return;
+    }
+  }
+
+  async getById(
+    req: Request<IdParams>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const id = getRequiredParam(
+        req.params,
+        "id",
+        "Id do cliente nao informado"
+      );
+
+      const client = await clientsService.getById(id);
+
+      res.status(200).json(client);
+      return;
+    } catch (error) {
+      next(error);
+      return;
+    }
+  }
+
+  async update(
+    req: Request<IdParams>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const id = getRequiredParam(
+        req.params,
+        "id",
+        "Id do cliente nao informado"
+      );
+
+      const data = updateClientSchema.parse(req.body);
+      const client = await clientsService.update(id, data);
+
+      res.status(200).json(client);
+      return;
+    } catch (error) {
+      next(error);
+      return;
+    }
+  }
+
+  async delete(
+    req: Request<IdParams>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const id = getRequiredParam(
+        req.params,
+        "id",
+        "Id do cliente nao informado"
+      );
+
+      await clientsService.delete(id);
+
+      res.status(204).send();
+      return;
+    } catch (error) {
+      next(error);
+      return;
+    }
+  }
+}
+
+
+============================================================
+PATH: backend\src\modules\clients\clients.service.ts
+============================================================
+
+import { prisma } from "../../lib/prisma";
+import { HttpError } from "../../utils/http-error";
+import { CreateClientInput, UpdateClientInput } from "./clients.schemas";
+
+export class ClientsService {
+  async create(data: CreateClientInput) {
+    return prisma.client.create({
+      data: {
+        ...data,
+        // padroniza string vazia -> null
+        email: data.email?.trim() ? data.email.trim() : null,
+      },
+    });
+  }
+
+  async list() {
+    return prisma.client.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async getById(id: string) {
+    const client = await prisma.client.findUnique({
+      where: { id },
+    });
+
+    if (!client) {
+      throw HttpError.notFound("Cliente não encontrado.");
+    }
+
+    return client;
+  }
+
+  async update(id: string, data: UpdateClientInput) {
+    await this.getById(id);
+
+    return prisma.client.update({
+      where: { id },
+      data: {
+        ...data,
+        // padroniza string vazia -> null
+        email: data.email?.trim() ? data.email.trim() : null,
+      },
+    });
+  }
+
+  async delete(id: string) {
+    await this.getById(id);
+
+    await prisma.client.delete({
+      where: { id },
+    });
+  }
+}
+
+
+============================================================
+PATH: backend\src\modules\clients\clients.schemas.ts
+============================================================
+
+import { z } from "zod";
+
+export const createClientSchema = z.object({
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  phone: z.string().optional(),
+  email: z.string().email("Email invalido").optional().or(z.literal("")),
+  cpfCnpj: z.string().optional(),
+  rgIe: z.string().optional(),
+  address: z.string().optional(),
+  district: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+});
+
+export const updateClientSchema = createClientSchema.partial();
+
+export type CreateClientInput = z.infer<typeof createClientSchema>;
+export type UpdateClientInput = z.infer<typeof updateClientSchema>;
+
+
+============================================================
+PATH: backend\src\modules\service-orders\service-orders.routes.ts
+============================================================
+
+import { Router } from "express";
+import { ServiceOrdersController } from "./service-orders.controller";
+import { ensureAuth } from "../../middlewares/auth";
+
+const controller = new ServiceOrdersController();
+export const serviceOrdersRoutes = Router();
+
+/**
+ * @openapi
+ * tags:
+ *   - name: Service Orders
+ *     description: Ordens de serviço (OS)
+ */
+
+serviceOrdersRoutes.use(ensureAuth);
+
+/**
+ * @openapi
+ * /service-orders:
+ *   post:
+ *     tags: [Service Orders]
+ *     summary: Cria uma OS (entrada) com dados do equipamento preenchidos na própria OS
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [clientId, clientCpfCnpj, equipmentType, symptoms]
+ *             properties:
+ *               clientId: { type: string }
+ *               clientCpfCnpj: { type: string, example: "055.092.733-64" }
+ *               equipmentType: { type: string, example: "DESKTOP" }
+ *               equipmentBrand: { type: string, nullable: true, example: "GOLDENTEC" }
+ *               equipmentModel: { type: string, nullable: true, example: "SEM" }
+ *               equipmentSerialNumber: { type: string, nullable: true, example: "0524" }
+ *               equipmentPassword: { type: string, nullable: true, example: "NÃO INFORMADO" }
+ *               symptoms: { type: string, example: "LIGA E NÃO DÁ VÍDEO" }
+ *               accessories: { type: string, nullable: true }
+ *               observations: { type: string, nullable: true }
+ *               budgetValue: { type: number, nullable: true }
+ *               finalValue: { type: number, nullable: true }
+ *     responses:
+ *       201: { description: OS criada com sucesso }
+ *       400: { description: Erro de validação }
+ *       401: { description: Não autenticado }
+ *       404: { description: Cliente não encontrado }
+ *   get:
+ *     tags: [Service Orders]
+ *     summary: Lista OS
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: Lista de OS }
+ *       401: { description: Não autenticado }
+ */
+serviceOrdersRoutes.get("/", controller.list.bind(controller));
+serviceOrdersRoutes.post("/", controller.create.bind(controller));
+
+/**
+ * @openapi
+ * /service-orders/{id}:
+ *   get:
+ *     tags: [Service Orders]
+ *     summary: Busca OS por ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OS encontrada }
+ *       401: { description: Não autenticado }
+ *       404: { description: OS não encontrada }
+ *   put:
+ *     tags: [Service Orders]
+ *     summary: Atualiza dados da OS (sem alterar status)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               clientId: { type: string }
+ *               clientCpfCnpj: { type: string }
+ *               equipmentType: { type: string }
+ *               equipmentBrand: { type: string, nullable: true }
+ *               equipmentModel: { type: string, nullable: true }
+ *               equipmentSerialNumber: { type: string, nullable: true }
+ *               equipmentPassword: { type: string, nullable: true }
+ *               symptoms: { type: string }
+ *               accessories: { type: string, nullable: true }
+ *               observations: { type: string, nullable: true }
+ *               budgetValue: { type: number, nullable: true }
+ *               finalValue: { type: number, nullable: true }
+ *     responses:
+ *       200: { description: OS atualizada }
+ *       400: { description: Erro de validação }
+ *       401: { description: Não autenticado }
+ *       404: { description: OS não encontrada }
+ *   delete:
+ *     tags: [Service Orders]
+ *     summary: Remove OS por ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       204: { description: OS removida com sucesso }
+ *       401: { description: Não autenticado }
+ *       404: { description: OS não encontrada }
+ */
+serviceOrdersRoutes.get("/:id", controller.getById.bind(controller));
+serviceOrdersRoutes.put("/:id", controller.update.bind(controller));
+serviceOrdersRoutes.delete("/:id", controller.delete.bind(controller));
+
+/**
+ * @openapi
+ * /service-orders/{id}/status:
+ *   patch:
+ *     tags: [Service Orders]
+ *     summary: Atualiza o status da OS
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [ABERTA, EM_ANALISE, AGUARDANDO_APROVACAO, EM_MANUTENCAO, FINALIZADA, ENTREGUE, CANCELADA]
+ *     responses:
+ *       200: { description: Status atualizado }
+ *       400: { description: Erro de validação }
+ *       401: { description: Não autenticado }
+ *       404: { description: OS não encontrada }
+ */
+serviceOrdersRoutes.patch("/:id/status", controller.updateStatus.bind(controller));
+
+
+============================================================
+PATH: backend\src\modules\service-orders\service-orders.controller.ts
+============================================================
+
+import { NextFunction, Request, Response } from "express";
+import { ServiceOrdersService } from "./service-orders.service";
+import {
+  createServiceOrderSchema,
+  updateServiceOrderSchema,
+  updateServiceOrderStatusSchema,
+} from "./service-orders.schemas";
+import { getRequiredParam } from "../../utils/get-required-param";
+
+const service = new ServiceOrdersService();
+
+export class ServiceOrdersController {
+  async list(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const orders = await service.list();
+      return res.status(200).json(orders);
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  async getById(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = getRequiredParam(req.params, "id");
+      const order = await service.getById(id);
+      return res.status(200).json(order);
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  async create(req: Request, res: Response, next: NextFunction) {
+    try {
+      const input = createServiceOrderSchema.parse(req.body);
+
+      const createdByUserId = (req as any).user?.id as string | undefined;
+
+      const created = await service.create(input, createdByUserId);
+      return res.status(201).json(created);
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  async update(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = getRequiredParam(req.params, "id");
+      const input = updateServiceOrderSchema.parse(req.body);
+      const updated = await service.update(id, input);
+      return res.status(200).json(updated);
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  async updateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = getRequiredParam(req.params, "id");
+      const input = updateServiceOrderStatusSchema.parse(req.body);
+      const updated = await service.updateStatus(id, input);
+      return res.status(200).json(updated);
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = getRequiredParam(req.params, "id");
+      await service.delete(id);
+      return res.status(204).send();
+    } catch (err) {
+      return next(err);
+    }
+  }
+}
+
+
+============================================================
+PATH: backend\src\modules\service-orders\service-orders.service.ts
+============================================================
+
+import { prisma } from "../../lib/prisma";
+import { HttpError } from "../../utils/http-error";
+import type {
+  CreateServiceOrderInput,
+  UpdateServiceOrderInput,
+  UpdateServiceOrderStatusInput,
+} from "./service-orders.schemas";
+
+export class ServiceOrdersService {
+  async create(input: CreateServiceOrderInput, createdByUserId?: string) {
+    const client = await prisma.client.findUnique({
+      where: { id: input.clientId },
+      select: { id: true },
+    });
+    if (!client) throw HttpError.notFound("Cliente não encontrado.");
+
+    return prisma.serviceOrder.create({
+      data: {
+        client: { connect: { id: input.clientId } },
+
+        ...(createdByUserId ? { createdByUser: { connect: { id: createdByUserId } } } : {}),
+
+        status: "ABERTA",
+
+        // cliente “na OS”
+        clientCpfCnpj: input.clientCpfCnpj,
+
+        // equipamento “na OS”
+        equipmentType: input.equipmentType,
+        equipmentBrand: input.equipmentBrand ?? null,
+        equipmentModel: input.equipmentModel ?? null,
+        equipmentSerialNumber: input.equipmentSerialNumber ?? null,
+        equipmentPassword: input.equipmentPassword ?? null,
+
+        // dados da OS
+        symptoms: input.symptoms,
+        accessories: input.accessories ?? null,
+        observations: input.observations ?? null,
+
+        budgetValue: input.budgetValue ?? null,
+        finalValue: input.finalValue ?? null,
+      },
+      include: {
+        client: true,
+      },
+    });
+  }
+
+  async list() {
+    return prisma.serviceOrder.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        client: true,
+      },
+    });
+  }
+
+  async getById(id: string) {
+    const order = await prisma.serviceOrder.findUnique({
+      where: { id },
+      include: {
+        client: true,
+      },
+    });
+
+    if (!order) throw HttpError.notFound("Ordem de serviço não encontrada.");
+    return order;
+  }
+
+  async update(id: string, input: UpdateServiceOrderInput) {
+    await this.getById(id);
+
+    // se permitir trocar o clientId, valida
+    if (input.clientId) {
+      const client = await prisma.client.findUnique({
+        where: { id: input.clientId },
+        select: { id: true },
+      });
+      if (!client) throw HttpError.notFound("Cliente não encontrado.");
+    }
+
+    return prisma.serviceOrder.update({
+      where: { id },
+      data: {
+        ...(input.clientId ? { client: { connect: { id: input.clientId } } } : {}),
+
+        ...(typeof input.clientCpfCnpj === "string" ? { clientCpfCnpj: input.clientCpfCnpj } : {}),
+
+        ...(typeof input.equipmentType === "string" ? { equipmentType: input.equipmentType } : {}),
+        ...(input.equipmentBrand !== undefined ? { equipmentBrand: input.equipmentBrand ?? null } : {}),
+        ...(input.equipmentModel !== undefined ? { equipmentModel: input.equipmentModel ?? null } : {}),
+        ...(input.equipmentSerialNumber !== undefined
+          ? { equipmentSerialNumber: input.equipmentSerialNumber ?? null }
+          : {}),
+        ...(input.equipmentPassword !== undefined ? { equipmentPassword: input.equipmentPassword ?? null } : {}),
+
+        ...(typeof input.symptoms === "string" ? { symptoms: input.symptoms } : {}),
+        ...(input.accessories !== undefined ? { accessories: input.accessories ?? null } : {}),
+        ...(input.observations !== undefined ? { observations: input.observations ?? null } : {}),
+
+        ...(input.budgetValue !== undefined ? { budgetValue: input.budgetValue ?? null } : {}),
+        ...(input.finalValue !== undefined ? { finalValue: input.finalValue ?? null } : {}),
+      },
+      include: {
+        client: true,
+      },
+    });
+  }
+
+  async updateStatus(id: string, input: UpdateServiceOrderStatusInput) {
+    await this.getById(id);
+
+    return prisma.serviceOrder.update({
+      where: { id },
+      data: {
+        status: input.status,
+      },
+      include: {
+        client: true,
+      },
+    });
+  }
+
+  async delete(id: string) {
+    await this.getById(id);
+
+    await prisma.serviceOrder.delete({
+      where: { id },
+    });
+  }
+}
+
+
+============================================================
+PATH: backend\src\modules\service-orders\service-orders.schemas.ts
+============================================================
+
+import { z } from "zod";
+
+const toOptionalString = z.preprocess((v) => {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v !== "string") return v;
+  const t = v.trim();
+  return t.length === 0 ? undefined : t;
+}, z.string().min(1).optional());
+
+const toOptionalNumber = z.preprocess((v) => {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (t.length === 0) return undefined;
+    const n = Number(t.replace(",", "."));
+    return Number.isFinite(n) ? n : v;
+  }
+  return v;
+}, z.number().nonnegative().optional());
+
+export const serviceOrderStatusSchema = z.enum([
+  "ABERTA",
+  "EM_ANALISE",
+  "AGUARDANDO_APROVACAO",
+  "EM_MANUTENCAO",
+  "FINALIZADA",
+  "ENTREGUE",
+  "CANCELADA",
+]);
+
+export const createServiceOrderSchema = z.object({
+  // cliente existe no sistema
+  clientId: z.string().min(1),
+
+  // CPF/CNPJ obrigatório na OS (registro “de entrada”)
+  clientCpfCnpj: z.string().min(1),
+
+  // equipamento preenchido na OS (não é entidade separada)
+  equipmentType: z.string().min(1),
+  equipmentBrand: toOptionalString,
+  equipmentModel: toOptionalString,
+  equipmentSerialNumber: toOptionalString,
+  equipmentPassword: toOptionalString,
+
+  // dados da OS
+  symptoms: z.string().min(1),
+  accessories: toOptionalString,
+  observations: toOptionalString,
+
+  budgetValue: toOptionalNumber,
+  finalValue: toOptionalNumber,
+});
+
+export const updateServiceOrderSchema = z.object({
+  // normalmente NÃO muda clientId depois, mas se quiser permitir, deixa optional
+  clientId: z.string().min(1).optional(),
+  clientCpfCnpj: z.string().min(1).optional(),
+
+  equipmentType: z.string().min(1).optional(),
+  equipmentBrand: toOptionalString,
+  equipmentModel: toOptionalString,
+  equipmentSerialNumber: toOptionalString,
+  equipmentPassword: toOptionalString,
+
+  symptoms: z.string().min(1).optional(),
+  accessories: toOptionalString,
+  observations: toOptionalString,
+
+  budgetValue: toOptionalNumber,
+  finalValue: toOptionalNumber,
+});
+
+export const updateServiceOrderStatusSchema = z.object({
+  status: serviceOrderStatusSchema,
+});
+
+export type CreateServiceOrderInput = z.infer<typeof createServiceOrderSchema>;
+export type UpdateServiceOrderInput = z.infer<typeof updateServiceOrderSchema>;
+export type UpdateServiceOrderStatusInput = z.infer<typeof updateServiceOrderStatusSchema>;
+export type ServiceOrderStatusInput = z.infer<typeof serviceOrderStatusSchema>;
+

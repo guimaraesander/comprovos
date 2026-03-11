@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { router } from "./routes";
+import { routes } from "./routes";
 import { errorHandler } from "./middlewares/error-handler";
 import { setupSwagger } from "./config/swagger";
 
@@ -16,7 +16,7 @@ app.get("/health", (_req, res) => {
   });
 });
 
-app.use("/api", router);
+app.use("/api", routes);
 
 // Swagger
 setupSwagger(app);
