@@ -53,9 +53,9 @@ const STATUS_OPTIONS: ServiceOrderStatus[] = [
 
 type FormState = {
   clientId: string;
-  clientCpfCnpj: string;
+  clientCpfCnpj: string; // congelado na OS (não precisa ser campo visível no CREATE)
 
-  // “preview” do cliente (somente leitura)
+  // preview do cliente (somente leitura)
   clientName: string;
   clientPhone: string;
   clientEmail: string;
@@ -111,7 +111,7 @@ function normalizeText(v: string) {
 }
 
 function normalizeCpfCnpj(v: string) {
-  return v.replace(/\D/g, "");
+  return (v || "").replace(/\D/g, "");
 }
 
 function formatClientAddress(c: Client) {
@@ -208,10 +208,21 @@ export function ServiceOrdersPage() {
   const cpfMatches = useMemo(() => {
     const q = normalizeCpfCnpj(cpfQuery);
     if (!q) return [];
-    // busca por cpf/cnpj (cpfCnpj do cliente)
+
+    // remove duplicados por cpfCnpj (caso o backend ainda permita)
+    const seen = new Set<string>();
+
     const hits = clients
       .filter((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")).startsWith(q))
+      .filter((c: any) => {
+        const key = normalizeCpfCnpj(String(c.cpfCnpj || ""));
+        if (!key) return false;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
       .slice(0, 8);
+
     return hits;
   }, [cpfQuery, clients]);
 
@@ -284,7 +295,7 @@ export function ServiceOrdersPage() {
     setPageError(null);
     setSelected(null);
 
-    // ✅ tudo zerado
+    // tudo zerado
     setForm(initialForm);
     setCpfQuery("");
     setCpfOpen(false);
@@ -307,7 +318,7 @@ export function ServiceOrdersPage() {
     setForm((p) => ({
       ...p,
       clientId: c.id,
-      clientCpfCnpj: cpf,
+      clientCpfCnpj: cpf, // ✅ preenchido automaticamente (vai pro backend)
 
       clientName: c.name || "",
       clientPhone: String((c as any).phone || ""),
@@ -340,8 +351,9 @@ export function ServiceOrdersPage() {
     const equipmentType = normalizeText(form.equipmentType);
     const symptoms = normalizeText(form.symptoms);
 
-    if (!clientId) return setPageError("Informe o CPF/CNPJ e selecione um cliente encontrado.");
-    if (!clientCpfCnpj) return setPageError("Informe o CPF/CNPJ na OS.");
+    if (!clientId || !clientCpfCnpj) {
+      return setPageError("Digite o CPF/CNPJ e selecione o cliente encontrado na lista.");
+    }
     if (!equipmentType) return setPageError("Informe o tipo do equipamento.");
     if (!symptoms) return setPageError("Informe os sintomas.");
 
@@ -384,8 +396,8 @@ export function ServiceOrdersPage() {
       clientCpfCnpj: order.clientCpfCnpj || "",
 
       clientName: c?.name || "",
-      clientPhone: String(c?.phone || ""),
-      clientEmail: String(c?.email || ""),
+      clientPhone: String((c as any)?.phone || ""),
+      clientEmail: String((c as any)?.email || ""),
       clientAddress: c ? formatClientAddress(c as any) : "",
 
       equipmentType: order.equipmentType || "",
@@ -418,8 +430,8 @@ export function ServiceOrdersPage() {
     const equipmentType = normalizeText(form.equipmentType);
     const symptoms = normalizeText(form.symptoms);
 
-    if (!clientId) return setPageError("Informe o CPF/CNPJ e selecione um cliente encontrado.");
-    if (!clientCpfCnpj) return setPageError("Informe o CPF/CNPJ na OS.");
+    if (!clientId) return setPageError("Cliente inválido na OS.");
+    if (!clientCpfCnpj) return setPageError("CPF/CNPJ inválido na OS.");
     if (!equipmentType) return setPageError("Informe o tipo do equipamento.");
     if (!symptoms) return setPageError("Informe os sintomas.");
 
@@ -683,10 +695,10 @@ export function ServiceOrdersPage() {
                     setCpfQuery(v);
                     setCpfOpen(true);
 
-                    // enquanto digita, limpa seleção (evita “cliente preso”)
+                    // enquanto digita, limpa seleção
                     clearClientSelection();
 
-                    // se usuário colar um cpf/cnpj exato e existir, auto-seleciona
+                    // se colar um cpf/cnpj exato e existir, auto-seleciona
                     const q = normalizeCpfCnpj(v);
                     const exact = clients.find((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")) === q);
                     if (exact) applyClientSelection(exact);
@@ -699,17 +711,10 @@ export function ServiceOrdersPage() {
                 {cpfOpen && cpfQuery.trim().length > 0 && (
                   <div className={styles.dropdown}>
                     {cpfMatches.length === 0 ? (
-                      <div className={styles.noResults}>
-                        Nenhum cliente encontrado com esse CPF/CNPJ.
-                      </div>
+                      <div className={styles.noResults}>Nenhum cliente encontrado com esse CPF/CNPJ.</div>
                     ) : (
                       cpfMatches.map((c: any) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className={styles.option}
-                          onClick={() => applyClientSelection(c)}
-                        >
+                        <button key={c.id} type="button" className={styles.option} onClick={() => applyClientSelection(c)}>
                           <span className={styles.optionCpf}>{String(c.cpfCnpj || "").trim() || "—"}</span>
                           <span className={styles.optionName}>{c.name}</span>
                         </button>
@@ -734,15 +739,6 @@ export function ServiceOrdersPage() {
 
             <Field label="Endereço" full>
               <input value={form.clientAddress} disabled readOnly placeholder="—" />
-            </Field>
-
-            <Field label="CPF/CNPJ na OS *" full>
-              <input
-                value={form.clientCpfCnpj}
-                onChange={(e) => setForm((p) => ({ ...p, clientCpfCnpj: e.target.value }))}
-                placeholder="Digite o CPF/CNPJ (obrigatório na OS)"
-                disabled={modalSaving}
-              />
             </Field>
           </FormGrid>
         </div>
@@ -864,17 +860,12 @@ export function ServiceOrdersPage() {
           </>
         }
       >
-        {/* Edit reaproveita o mesmo layout do Create (sem dropdown obrigatório) */}
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Dados do cliente</div>
 
           <FormGrid>
-            <Field label="CPF/CNPJ na OS *" full>
-              <input
-                value={form.clientCpfCnpj}
-                onChange={(e) => setForm((p) => ({ ...p, clientCpfCnpj: e.target.value }))}
-                disabled={modalSaving}
-              />
+            <Field label="CPF/CNPJ na OS" full>
+              <input value={form.clientCpfCnpj} disabled readOnly />
             </Field>
 
             <Field label="Nome" full>

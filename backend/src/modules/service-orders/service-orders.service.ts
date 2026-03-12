@@ -5,8 +5,11 @@ import type {
   UpdateServiceOrderInput,
   UpdateServiceOrderStatusInput,
 } from "./service-orders.schemas";
+import { BudgetsService } from "./budgets.service";
 
 export class ServiceOrdersService {
+  private budgets = new BudgetsService();
+
   async create(input: CreateServiceOrderInput, createdByUserId?: string) {
     const client = await prisma.client.findUnique({
       where: { id: input.clientId },
@@ -22,17 +25,14 @@ export class ServiceOrdersService {
 
         status: "ABERTA",
 
-        // cliente “na OS”
         clientCpfCnpj: input.clientCpfCnpj,
 
-        // equipamento “na OS”
         equipmentType: input.equipmentType,
         equipmentBrand: input.equipmentBrand ?? null,
         equipmentModel: input.equipmentModel ?? null,
         equipmentSerialNumber: input.equipmentSerialNumber ?? null,
         equipmentPassword: input.equipmentPassword ?? null,
 
-        // dados da OS
         symptoms: input.symptoms,
         accessories: input.accessories ?? null,
         observations: input.observations ?? null,
@@ -42,6 +42,7 @@ export class ServiceOrdersService {
       },
       include: {
         client: true,
+        budget: { include: { items: true } },
       },
     });
   }
@@ -51,6 +52,7 @@ export class ServiceOrdersService {
       orderBy: { createdAt: "desc" },
       include: {
         client: true,
+        budget: { include: { items: true } },
       },
     });
   }
@@ -60,6 +62,7 @@ export class ServiceOrdersService {
       where: { id },
       include: {
         client: true,
+        budget: { include: { items: true } },
       },
     });
 
@@ -70,7 +73,6 @@ export class ServiceOrdersService {
   async update(id: string, input: UpdateServiceOrderInput) {
     await this.getById(id);
 
-    // se permitir trocar o clientId, valida
     if (input.clientId) {
       const client = await prisma.client.findUnique({
         where: { id: input.clientId },
@@ -103,22 +105,40 @@ export class ServiceOrdersService {
       },
       include: {
         client: true,
+        budget: { include: { items: true } },
       },
     });
   }
 
   async updateStatus(id: string, input: UpdateServiceOrderStatusInput) {
-    await this.getById(id);
+    const order = await prisma.serviceOrder.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+    if (!order) throw HttpError.notFound("Ordem de serviço não encontrada.");
 
-    return prisma.serviceOrder.update({
+    const updated = await prisma.serviceOrder.update({
       where: { id },
       data: {
         status: input.status,
       },
       include: {
         client: true,
+        budget: { include: { items: true } },
       },
     });
+
+    // ✅ regra: ao entrar em AGUARDANDO_APROVACAO, garante orçamento criado
+    if (input.status === "AGUARDANDO_APROVACAO") {
+      await this.budgets.ensureExists(id);
+      // re-leitura para devolver com budget
+      return prisma.serviceOrder.findUnique({
+        where: { id },
+        include: { client: true, budget: { include: { items: true } } },
+      });
+    }
+
+    return updated;
   }
 
   async delete(id: string) {

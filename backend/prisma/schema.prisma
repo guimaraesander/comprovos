@@ -39,9 +39,9 @@ model User {
 model Client {
   id        String   @id @default(cuid())
   name      String
-  phone     String?
+  phone     String
   email     String?
-  cpfCnpj   String?
+  cpfCnpj   String   @unique
   rgIe      String?
   address   String?
   district  String?
@@ -54,6 +54,7 @@ model Client {
 
   serviceOrders ServiceOrder[]
 
+  @@index([cpfCnpj])
   @@map("clients")
 }
 
@@ -65,23 +66,23 @@ model ServiceOrder {
   createdByUserId  String?
   entryDate        DateTime           @default(now())
 
-  // ✅ dados do cliente "congelados" na OS
+  // dados do cliente "congelados" na OS
   clientCpfCnpj    String
 
-  // ✅ dados do equipamento preenchidos na OS (não é entidade separada)
+  // dados do equipamento preenchidos na OS
   equipmentType          String
   equipmentBrand         String?
   equipmentModel         String?
   equipmentSerialNumber  String?
   equipmentPassword      String?
 
-  // dados da OS
   symptoms         String
   accessories      String?
   observations     String?
 
   status           ServiceOrderStatus @default(ABERTA)
 
+  // (mantidos por compatibilidade / uso futuro)
   budgetValue      Decimal?           @db.Decimal(10, 2)
   finalValue       Decimal?           @db.Decimal(10, 2)
 
@@ -95,6 +96,7 @@ model ServiceOrder {
   createdByUser    User?              @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   history          ServiceOrderHistory[]
+  budget           ServiceOrderBudget?
 
   @@index([clientId])
   @@index([status])
@@ -113,4 +115,46 @@ model ServiceOrderHistory {
 
   @@index([serviceOrderId])
   @@map("service_order_history")
+}
+
+// ✅ 1 orçamento por OS
+model ServiceOrderBudget {
+  id             String   @id @default(cuid())
+  serviceOrderId String   @unique
+
+  // valores extras
+  travelFee      Decimal  @db.Decimal(10, 2) @default(0) // deslocamento
+  thirdPartyFee  Decimal  @db.Decimal(10, 2) @default(0) // serviço terceiros
+  discount       Decimal  @db.Decimal(10, 2) @default(0)
+
+  note           String?
+  approvedAt     DateTime?
+  rejectedAt     DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  serviceOrder   ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  items          ServiceOrderBudgetItem[]
+
+  @@index([serviceOrderId])
+  @@map("service_order_budgets")
+}
+
+model ServiceOrderBudgetItem {
+  id          String   @id @default(cuid())
+  budgetId    String
+
+  description String   // “serviço executado”
+  technician  String?
+  qty         Int      @default(1)
+  unitValue   Decimal  @db.Decimal(10, 2)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  budget      ServiceOrderBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@index([budgetId])
+  @@map("service_order_budget_items")
 }

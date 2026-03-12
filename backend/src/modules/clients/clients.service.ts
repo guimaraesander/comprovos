@@ -2,15 +2,29 @@ import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../utils/http-error";
 import { CreateClientInput, UpdateClientInput } from "./clients.schemas";
 
+function normalizeEmail(email?: string) {
+  const v = (email || "").trim();
+  return v.length ? v : null;
+}
+
 export class ClientsService {
   async create(data: CreateClientInput) {
-    return prisma.client.create({
-      data: {
-        ...data,
-        // padroniza string vazia -> null
-        email: data.email?.trim() ? data.email.trim() : null,
-      },
-    });
+    // cpfCnpj e phone já chegam normalizados pelo Zod (só dígitos)
+
+    try {
+      return await prisma.client.create({
+        data: {
+          ...data,
+          email: normalizeEmail(data.email),
+        },
+      });
+    } catch (err: any) {
+      // unique violation (cpfCnpj)
+      if (err?.code === "P2002") {
+        throw HttpError.conflict("Já existe um cliente com esse CPF/CNPJ.");
+      }
+      throw err;
+    }
   }
 
   async list() {
@@ -20,35 +34,32 @@ export class ClientsService {
   }
 
   async getById(id: string) {
-    const client = await prisma.client.findUnique({
-      where: { id },
-    });
-
-    if (!client) {
-      throw HttpError.notFound("Cliente não encontrado.");
-    }
-
+    const client = await prisma.client.findUnique({ where: { id } });
+    if (!client) throw HttpError.notFound("Cliente não encontrado.");
     return client;
   }
 
   async update(id: string, data: UpdateClientInput) {
     await this.getById(id);
 
-    return prisma.client.update({
-      where: { id },
-      data: {
-        ...data,
-        // padroniza string vazia -> null
-        email: data.email?.trim() ? data.email.trim() : null,
-      },
-    });
+    try {
+      return await prisma.client.update({
+        where: { id },
+        data: {
+          ...data,
+          ...(data.email !== undefined ? { email: normalizeEmail(data.email) } : {}),
+        },
+      });
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        throw HttpError.conflict("Já existe um cliente com esse CPF/CNPJ.");
+      }
+      throw err;
+    }
   }
 
   async delete(id: string) {
     await this.getById(id);
-
-    await prisma.client.delete({
-      where: { id },
-    });
+    await prisma.client.delete({ where: { id } });
   }
 }
