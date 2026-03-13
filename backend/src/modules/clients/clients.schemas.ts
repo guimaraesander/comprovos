@@ -17,10 +17,7 @@ function trimOrEmpty(v: unknown) {
  * - valida min(1) para disparar a mensagem
  */
 function requiredText(message: string) {
-  return z.preprocess(
-    (v) => trimOrEmpty(v),
-    z.string().min(1, message)
-  );
+  return z.preprocess((v) => trimOrEmpty(v), z.string().min(1, message));
 }
 
 const nameSchema = requiredText("Nome é obrigatório").refine(
@@ -45,7 +42,7 @@ const cpfCnpjSchema = z.preprocess(
 );
 
 /**
- * Email opcional:
+ * Email opcional (CREATE):
  * - undefined/null/"" => undefined
  * - se vier preenchido, valida email
  */
@@ -57,7 +54,11 @@ const emailSchema = z.preprocess(
   z.string().email("Email inválido").optional()
 );
 
-// Campos opcionais: sempre trim; "" vira undefined (evita salvar vazio)
+/**
+ * Texto opcional (CREATE):
+ * - trim
+ * - "" => undefined
+ */
 const optionalText = z.preprocess(
   (v) => {
     const t = trimOrEmpty(v);
@@ -65,6 +66,40 @@ const optionalText = z.preprocess(
   },
   z.string().optional()
 );
+
+/**
+ * Texto "clearable" (UPDATE):
+ * - undefined => não altera
+ * - null => limpa (null)
+ * - "" (string vazia) => limpa (null)
+ * - "abc" => "abc"
+ */
+function clearableText() {
+  return z.preprocess((v) => {
+    if (v === undefined) return undefined;
+    if (v === null) return null;
+    if (typeof v !== "string") return undefined;
+
+    const t = v.trim();
+    return t.length === 0 ? null : t;
+  }, z.union([z.string(), z.null()]).optional());
+}
+
+/**
+ * Email "clearable" (UPDATE):
+ * - undefined => não altera
+ * - null => limpa
+ * - "" => limpa
+ * - string => valida email
+ */
+const clearableEmailSchema = z.preprocess((v) => {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== "string") return undefined;
+
+  const t = v.trim();
+  return t.length === 0 ? null : t;
+}, z.union([z.string().email("Email inválido"), z.null()]).optional());
 
 export const createClientSchema = z.object({
   name: nameSchema,
@@ -81,19 +116,30 @@ export const createClientSchema = z.object({
 });
 
 export const updateClientSchema = z.object({
-  // no update você pode deixar tudo opcional
-  // e manter as mesmas validações quando vier preenchido
-  name: z.preprocess((v) => (v === undefined ? undefined : trimOrEmpty(v)), z.string().min(2, "Nome deve ter pelo menos 2 caracteres").optional()),
-  phone: z.preprocess((v) => (v === undefined ? undefined : onlyDigits(v)), z.string().refine((v) => v.length === 10 || v.length === 11, "Telefone deve ter 10 ou 11 dígitos").optional()),
-  cpfCnpj: z.preprocess((v) => (v === undefined ? undefined : onlyDigits(v)), z.string().refine((v) => v.length === 11 || v.length === 14, "CPF deve ter 11 dígitos ou CNPJ 14 dígitos").optional()),
+  name: z.preprocess(
+    (v) => (v === undefined ? undefined : trimOrEmpty(v)),
+    z.string().min(2, "Nome deve ter pelo menos 2 caracteres").optional()
+  ),
 
-  email: emailSchema,
-  rgIe: optionalText,
-  address: optionalText,
-  district: optionalText,
-  city: optionalText,
-  state: optionalText,
-  zipCode: optionalText,
+  phone: z.preprocess(
+    (v) => (v === undefined ? undefined : onlyDigits(v)),
+    z.string().refine((v) => v.length === 10 || v.length === 11, "Telefone deve ter 10 ou 11 dígitos").optional()
+  ),
+
+  cpfCnpj: z.preprocess(
+    (v) => (v === undefined ? undefined : onlyDigits(v)),
+    z.string().refine((v) => v.length === 11 || v.length === 14, "CPF deve ter 11 dígitos ou CNPJ 14 dígitos").optional()
+  ),
+
+  
+  email: clearableEmailSchema,
+  rgIe: clearableText(),
+
+  address: clearableText(),
+  district: clearableText(),
+  city: clearableText(),
+  state: clearableText(),
+  zipCode: clearableText(),
 });
 
 export type CreateClientInput = z.infer<typeof createClientSchema>;

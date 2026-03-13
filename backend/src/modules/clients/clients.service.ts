@@ -2,15 +2,14 @@ import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../utils/http-error";
 import { CreateClientInput, UpdateClientInput } from "./clients.schemas";
 
-function normalizeEmail(email?: string) {
-  const v = (email || "").trim();
+function normalizeEmail(email?: string | null) {
+  const v = (email ?? "").trim();
   return v.length ? v : null;
 }
 
 export class ClientsService {
   async create(data: CreateClientInput) {
     // cpfCnpj e phone já chegam normalizados pelo Zod (só dígitos)
-
     try {
       return await prisma.client.create({
         data: {
