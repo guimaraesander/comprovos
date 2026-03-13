@@ -106,7 +106,7 @@ function toCreatePayload(form: FormState): CreateClientInput {
 }
 
 function toUpdatePayload(form: FormState): UpdateClientInput {
-  // Mesmo payload do create, mas parcial
+  
   const payload = toCreatePayload(form);
   return payload;
 }
@@ -156,8 +156,18 @@ export function ClientsPage() {
 
   const filteredClients = useMemo(() => {
     const q = normalizeCpfCnpjDigits(appliedCpfCnpj);
+
     if (!q) return sortedClients;
-    return sortedClients.filter((c) => onlyDigits(String(c.cpfCnpj || "")).includes(q));
+
+    // Busca CPF/CNPJ:
+    // - se tiver 11/14 dígitos, busca EXATA
+    // - senão, mantém busca por "contém"
+    const isExact = q.length === 11 || q.length === 14;
+
+    return sortedClients.filter((c) => {
+      const digits = onlyDigits(String(c.cpfCnpj || ""));
+      return isExact ? digits === q : digits.includes(q);
+    });
   }, [sortedClients, appliedCpfCnpj]);
 
   function openCreate() {
@@ -324,7 +334,9 @@ export function ClientsPage() {
                     <td>
                       <div style={{ fontWeight: 800 }}>{c.name}</div>
                       <Muted>
-                        {(c.city || c.district) ? `${c.city || ""}${c.city && c.district ? " • " : ""}${c.district || ""}` : "-"}
+                        {(c.city || c.district)
+                          ? `${c.city || ""}${c.city && c.district ? " • " : ""}${c.district || ""}`
+                          : "-"}
                       </Muted>
                     </td>
 
@@ -356,7 +368,11 @@ export function ClientsPage() {
       {/* MODAL CREATE/EDIT */}
       <Modal
         title={mode === "CREATE" ? "Novo cliente" : "Editar cliente"}
-        subtitle={mode === "CREATE" ? "Preencha os dados abaixo e clique em “Salvar”." : "Atualize os dados do cliente e clique em “Salvar”."}
+        subtitle={
+          mode === "CREATE"
+            ? "Preencha os dados abaixo e clique em “Salvar”."
+            : "Atualize os dados do cliente e clique em “Salvar”."
+        }
         isOpen={isFormOpen}
         onClose={closeAllModals}
         disableClose={saving}
