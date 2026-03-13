@@ -6,7 +6,7 @@ export type Client = {
   phone: string;
   email?: string | null;
 
-  cpfCnpj: string;
+  cpfCnpj: string; //  backend
   rgIe?: string | null;
 
   address?: string | null;
@@ -46,13 +46,13 @@ export async function createClient(payload: CreateClientInput): Promise<Client> 
   return res.data;
 }
 
-export async function getClientById(id: string): Promise<Client> {
-  const res = await api.get<Client>(`/clients/${id}`);
+export async function updateClient(id: string, payload: UpdateClientInput): Promise<Client> {
+  const res = await api.put<Client>(`/clients/${id}`, payload);
   return res.data;
 }
 
-export async function updateClient(id: string, payload: UpdateClientInput): Promise<Client> {
-  const res = await api.put<Client>(`/clients/${id}`, payload);
+export async function getClientById(id: string): Promise<Client> {
+  const res = await api.get<Client>(`/clients/${id}`);
   return res.data;
 }
 

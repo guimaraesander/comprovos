@@ -21,10 +21,8 @@ type FormState = {
   name: string;
   phone: string;
   email: string;
-
   cpfCnpj: string;
   rgIe: string;
-
   zipCode: string;
   address: string;
   district: string;
@@ -62,101 +60,87 @@ function trim(v: string) {
   return (v || "").trim();
 }
 
-function normalizeCreatePayload(form: FormState): CreateClientInput {
-  const name = trim(form.name);
-  const phone = trim(form.phone);
-  const cpfCnpj = onlyDigits(form.cpfCnpj);
+function normalizeCpfCnpjDigits(v: string) {
+  return onlyDigits(v).slice(0, 14);
+}
 
-  const payload: CreateClientInput = {
-    name,
-    phone,
-    cpfCnpj,
+function normalizePhoneDigits(v: string) {
+  return onlyDigits(v).slice(0, 11);
+}
+
+function normalizeZipDigits(v: string) {
+  return onlyDigits(v).slice(0, 8);
+}
+
+function formatDateTimeBR(iso?: string) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+}
+
+function validateCpfCnpjDigits(digits: string) {
+  return digits.length === 11 || digits.length === 14;
+}
+
+function toCreatePayload(form: FormState): CreateClientInput {
+  return {
+    name: trim(form.name),
+    phone: normalizePhoneDigits(form.phone),
+    cpfCnpj: normalizeCpfCnpjDigits(form.cpfCnpj),
+
     email: trim(form.email) || null,
     rgIe: trim(form.rgIe) || null,
-    zipCode: onlyDigits(form.zipCode) || null,
+
+    zipCode: normalizeZipDigits(form.zipCode) || null,
     address: trim(form.address) || null,
     district: trim(form.district) || null,
     city: trim(form.city) || null,
-    state: trim(form.state).toUpperCase() || null,
+    state: trim(form.state).toUpperCase().slice(0, 2) || null,
   };
-
-  return payload;
 }
 
-function normalizeUpdatePayload(form: FormState): UpdateClientInput {
-  // mesma normalização (mas sem obrigar preenchimento)
-  const payload: UpdateClientInput = {
-    name: trim(form.name) || undefined,
-    phone: trim(form.phone) || undefined,
-    cpfCnpj: onlyDigits(form.cpfCnpj) || undefined,
-
-    email: trim(form.email) ? trim(form.email) : null,
-    rgIe: trim(form.rgIe) ? trim(form.rgIe) : null,
-
-    zipCode: onlyDigits(form.zipCode) ? onlyDigits(form.zipCode) : null,
-    address: trim(form.address) ? trim(form.address) : null,
-    district: trim(form.district) ? trim(form.district) : null,
-    city: trim(form.city) ? trim(form.city) : null,
-    state: trim(form.state) ? trim(form.state).toUpperCase() : null,
-  };
-
-  // remove undefined (pra não “zerar” sem querer)
-  Object.keys(payload).forEach((k) => {
-    const key = k as keyof UpdateClientInput;
-    if (payload[key] === undefined) delete payload[key];
-  });
-
+function toUpdatePayload(form: FormState): UpdateClientInput {
+  // Mesmo payload do create, mas parcial
+  const payload = toCreatePayload(form);
   return payload;
-}
-
-function formatContact(c: Client) {
-  const email = c.email ? String(c.email) : "";
-  const phone = c.phone ? String(c.phone) : "";
-  return { email, phone };
 }
 
 export function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
+  // busca
+  const [searchCpfCnpj, setSearchCpfCnpj] = useState("");
+  const [appliedCpfCnpj, setAppliedCpfCnpj] = useState("");
+
+  // modais
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const [selected, setSelected] = useState<Client | null>(null);
+  const [mode, setMode] = useState<"CREATE" | "EDIT">("CREATE");
   const [form, setForm] = useState<FormState>(initialForm);
 
-  const sortedClients = useMemo(() => {
-    return [...clients].sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }));
-  }, [clients]);
-
   async function loadClients() {
-    setError(null);
+    setPageError(null);
     setLoading(true);
     try {
       const data = await listClients();
       setClients(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(safeErrorMessage(err, "Não foi possível carregar a lista de clientes."));
+      setPageError(safeErrorMessage(err, "Não foi possível carregar a lista de clientes."));
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function refresh() {
-    setError(null);
-    setRefreshing(true);
-    try {
-      const data = await listClients();
-      setClients(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(safeErrorMessage(err, "Não foi possível carregar a lista de clientes."));
-    } finally {
-      setRefreshing(false);
     }
   }
 
@@ -164,114 +148,109 @@ export function ClientsPage() {
     void loadClients();
   }, []);
 
+  const sortedClients = useMemo(() => {
+    const list = Array.isArray(clients) ? [...clients] : [];
+    list.sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }));
+    return list;
+  }, [clients]);
+
+  const filteredClients = useMemo(() => {
+    const q = normalizeCpfCnpjDigits(appliedCpfCnpj);
+    if (!q) return sortedClients;
+    return sortedClients.filter((c) => onlyDigits(String(c.cpfCnpj || "")).includes(q));
+  }, [sortedClients, appliedCpfCnpj]);
+
   function openCreate() {
-    setSaveError(null);
+    setMode("CREATE");
     setSelected(null);
+    setModalError(null);
     setForm(initialForm);
-    setIsCreateOpen(true);
+    setIsFormOpen(true);
   }
 
   function openEdit(c: Client) {
-    setSaveError(null);
+    setMode("EDIT");
     setSelected(c);
-
+    setModalError(null);
     setForm({
       name: c.name || "",
       phone: c.phone || "",
-      email: c.email ? String(c.email) : "",
-
+      email: c.email || "",
       cpfCnpj: c.cpfCnpj || "",
-      rgIe: c.rgIe ? String(c.rgIe) : "",
-
-      zipCode: c.zipCode ? String(c.zipCode) : "",
-      address: c.address ? String(c.address) : "",
-      district: c.district ? String(c.district) : "",
-      city: c.city ? String(c.city) : "",
-      state: c.state ? String(c.state) : "",
+      rgIe: c.rgIe || "",
+      zipCode: c.zipCode || "",
+      address: c.address || "",
+      district: c.district || "",
+      city: c.city || "",
+      state: c.state || "",
     });
-
-    setIsEditOpen(true);
+    setIsFormOpen(true);
   }
 
-  function closeModals() {
+  function openView(c: Client) {
+    setSelected(c);
+    setIsViewOpen(true);
+  }
+
+  function closeAllModals() {
     if (saving) return;
-    setIsCreateOpen(false);
-    setIsEditOpen(false);
+    setIsFormOpen(false);
+    setIsViewOpen(false);
   }
 
-  function validateRequired() {
+  function applySearch() {
+    setAppliedCpfCnpj(searchCpfCnpj);
+  }
+
+  function clearSearch() {
+    setSearchCpfCnpj("");
+    setAppliedCpfCnpj("");
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setModalError(null);
+
     const name = trim(form.name);
-    const phone = trim(form.phone);
-    const cpf = onlyDigits(form.cpfCnpj);
+    const phoneDigits = normalizePhoneDigits(form.phone);
+    const cpfCnpjDigits = normalizeCpfCnpjDigits(form.cpfCnpj);
 
-    if (!name) return "Informe o nome do cliente.";
-    if (!phone) return "Informe o telefone.";
-    if (!cpf) return "Informe o CPF/CNPJ.";
-    if (!(cpf.length === 11 || cpf.length === 14)) return "CPF deve ter 11 dígitos ou CNPJ 14 dígitos.";
-
-    return null;
-  }
-
-  async function handleCreate(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setSaveError(null);
-
-    const msg = validateRequired();
-    if (msg) return setSaveError(msg);
+    if (!name) return setModalError("Informe o nome do cliente.");
+    if (!phoneDigits) return setModalError("Informe o telefone do cliente.");
+    if (!cpfCnpjDigits) return setModalError("Informe o CPF/CNPJ do cliente.");
+    if (!validateCpfCnpjDigits(cpfCnpjDigits)) {
+      return setModalError("CPF deve ter 11 dígitos ou CNPJ 14 dígitos.");
+    }
 
     setSaving(true);
     try {
-      const payload = normalizeCreatePayload(form);
-      await createClient(payload);
-      await refresh();
-      setIsCreateOpen(false);
+      if (mode === "CREATE") {
+        const payload = toCreatePayload(form);
+        const created = await createClient(payload);
+        setClients((prev) => [...prev, created]);
+      } else {
+        if (!selected) throw new Error("Cliente não selecionado para edição.");
+        const payload = toUpdatePayload(form);
+        const updated = await updateClient(selected.id, payload);
+        setClients((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+      }
+
+      closeAllModals();
     } catch (err) {
-      setSaveError(safeErrorMessage(err, "Não foi possível cadastrar o cliente."));
+      setModalError(safeErrorMessage(err, "Não foi possível salvar o cliente."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleUpdate(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!selected) return;
-
-    setSaveError(null);
-
-    const msg = validateRequired();
-    if (msg) return setSaveError(msg);
-
-    setSaving(true);
-    try {
-      const payload = normalizeUpdatePayload(form);
-      await updateClient(selected.id, payload);
-      await refresh();
-      setIsEditOpen(false);
-    } catch (err) {
-      setSaveError(safeErrorMessage(err, "Não foi possível atualizar o cliente."));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const modalFooterCreate = (
+  const modalFooter = (
     <>
-      <Button type="button" variant="secondary" onClick={closeModals} disabled={saving}>
+      <Button type="button" variant="secondary" onClick={closeAllModals} disabled={saving}>
         Cancelar
       </Button>
-      <Button type="submit" variant="primary" disabled={saving} form="create-client-form">
+
+      <Button type="submit" variant="primary" disabled={saving} form="client-form">
         {saving ? "Salvando..." : "Salvar"}
-      </Button>
-    </>
-  );
-
-  const modalFooterEdit = (
-    <>
-      <Button type="button" variant="secondary" onClick={closeModals} disabled={saving}>
-        Cancelar
-      </Button>
-      <Button type="submit" variant="primary" disabled={saving} form="edit-client-form">
-        {saving ? "Salvando..." : "Salvar alterações"}
       </Button>
     </>
   );
@@ -283,18 +262,41 @@ export function ClientsPage() {
         subtitle="Cadastro e consulta de clientes."
         actions={
           <>
-            <Button type="button" variant="secondary" onClick={refresh} disabled={loading || refreshing}>
-              {refreshing ? "Atualizando..." : "Atualizar"}
-            </Button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                value={searchCpfCnpj}
+                onChange={(e) => setSearchCpfCnpj(normalizeCpfCnpjDigits(e.target.value))}
+                placeholder="Buscar por CPF/CNPJ…"
+                inputMode="numeric"
+                maxLength={14}
+                style={{
+                  height: 40,
+                  padding: "0 12px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  outline: "none",
+                  minWidth: 240,
+                }}
+                disabled={loading}
+              />
 
-            <Button type="button" variant="primary" onClick={openCreate} disabled={loading}>
-              Novo cliente
-            </Button>
+              <Button type="button" variant="secondary" onClick={applySearch} disabled={loading}>
+                Buscar
+              </Button>
+
+              <Button type="button" variant="secondary" onClick={clearSearch} disabled={loading}>
+                Limpar
+              </Button>
+
+              <Button type="button" variant="primary" onClick={openCreate} disabled={loading}>
+                Novo cliente
+              </Button>
+            </div>
           </>
         }
       />
 
-      {error && <AlertError className="mb-12">{error}</AlertError>}
+      {pageError && <AlertError className="mb-12">{pageError}</AlertError>}
 
       {loading ? (
         <Muted>Carregando...</Muted>
@@ -304,73 +306,73 @@ export function ClientsPage() {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th style={{ width: 260 }}>Contato</th>
-                <th style={{ width: 240 }}>CPF/CNPJ</th>
-                <th style={{ width: 180 }}>Ações</th>
+                <th style={{ width: 280 }}>Contato</th>
+                <th style={{ width: 220 }}>CPF/CNPJ</th>
+                <th style={{ width: 260 }}>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {sortedClients.length === 0 ? (
+              {filteredClients.length === 0 ? (
                 <tr>
                   <td colSpan={4}>
-                    <Muted>Nenhum cliente cadastrado.</Muted>
+                    <Muted>Nenhum cliente encontrado.</Muted>
                   </td>
                 </tr>
               ) : (
-                sortedClients.map((c) => {
-                  const { email, phone } = formatContact(c);
-                  return (
-                    <tr key={c.id}>
-                      <td>
-                        <div style={{ fontWeight: 800 }}>{c.name}</div>
-                        <Muted>
-                          {c.city || c.district || c.address ? [c.city, c.district, c.address].filter(Boolean).join(" • ") : "-"}
-                        </Muted>
-                      </td>
+                filteredClients.map((c) => (
+                  <tr key={c.id}>
+                    <td>
+                      <div style={{ fontWeight: 800 }}>{c.name}</div>
+                      <Muted>
+                        {(c.city || c.district) ? `${c.city || ""}${c.city && c.district ? " • " : ""}${c.district || ""}` : "-"}
+                      </Muted>
+                    </td>
 
-                      <td>
-                        <div>{email || "-"}</div>
-                        <Muted>{phone || "-"}</Muted>
-                      </td>
+                    <td>
+                      <div>{c.email || "-"}</div>
+                      <Muted>{c.phone || "-"}</Muted>
+                    </td>
 
-                      <td>
-                        <div style={{ fontWeight: 700 }}>{c.cpfCnpj || "-"}</div>
-                      </td>
+                    <td>{c.cpfCnpj || "-"}</td>
 
-                      <td>
+                    <td>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <Button type="button" variant="secondary" onClick={() => openView(c)}>
+                          Visualizar
+                        </Button>
                         <Button type="button" variant="secondary" onClick={() => openEdit(c)}>
                           Editar
                         </Button>
-                      </td>
-                    </tr>
-                  );
-                })
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </Table>
         </Card>
       )}
 
-      {/* CREATE */}
+      {/* MODAL CREATE/EDIT */}
       <Modal
-        title="Novo cliente"
-        subtitle="Preencha os dados abaixo e clique em “Salvar”."
-        isOpen={isCreateOpen}
-        onClose={closeModals}
+        title={mode === "CREATE" ? "Novo cliente" : "Editar cliente"}
+        subtitle={mode === "CREATE" ? "Preencha os dados abaixo e clique em “Salvar”." : "Atualize os dados do cliente e clique em “Salvar”."}
+        isOpen={isFormOpen}
+        onClose={closeAllModals}
         disableClose={saving}
-        footer={modalFooterCreate}
+        footer={modalFooter}
       >
-        <form id="create-client-form" onSubmit={handleCreate}>
-          {saveError && <AlertError className="mb-12">{saveError}</AlertError>}
+        <form id="client-form" onSubmit={handleSubmit}>
+          {modalError && <AlertError className="mb-12">{modalError}</AlertError>}
 
           <FormGrid>
             <Field label="Nome *">
               <input
                 value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value.slice(0, 120) }))}
                 placeholder="Ex.: Maria"
                 required
-                maxLength={80}
+                maxLength={120}
                 disabled={saving}
               />
             </Field>
@@ -378,10 +380,11 @@ export function ClientsPage() {
             <Field label="Telefone *">
               <input
                 value={form.phone}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                placeholder="Ex.: (85) 99999-9999"
+                onChange={(e) => setForm((p) => ({ ...p, phone: normalizePhoneDigits(e.target.value) }))}
+                placeholder="Somente números (11 dígitos)"
                 required
-                maxLength={20}
+                inputMode="numeric"
+                maxLength={11}
                 disabled={saving}
               />
             </Field>
@@ -389,7 +392,7 @@ export function ClientsPage() {
             <Field label="Email">
               <input
                 value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value.slice(0, 120) }))}
                 placeholder="Ex.: joao@email.com"
                 maxLength={120}
                 disabled={saving}
@@ -399,10 +402,11 @@ export function ClientsPage() {
             <Field label="CPF/CNPJ *">
               <input
                 value={form.cpfCnpj}
-                onChange={(e) => setForm((p) => ({ ...p, cpfCnpj: e.target.value }))}
-                placeholder="Ex.: 123.456.789-10"
+                onChange={(e) => setForm((p) => ({ ...p, cpfCnpj: normalizeCpfCnpjDigits(e.target.value) }))}
+                placeholder="Somente números (11 ou 14 dígitos)"
                 required
-                maxLength={18}
+                inputMode="numeric"
+                maxLength={14}
                 disabled={saving}
               />
             </Field>
@@ -410,9 +414,9 @@ export function ClientsPage() {
             <Field label="RG/IE">
               <input
                 value={form.rgIe}
-                onChange={(e) => setForm((p) => ({ ...p, rgIe: e.target.value }))}
-                placeholder="Ex.: 1234567"
-                maxLength={20}
+                onChange={(e) => setForm((p) => ({ ...p, rgIe: e.target.value.slice(0, 30) }))}
+                placeholder="Opcional"
+                maxLength={30}
                 disabled={saving}
               />
             </Field>
@@ -420,9 +424,10 @@ export function ClientsPage() {
             <Field label="CEP">
               <input
                 value={form.zipCode}
-                onChange={(e) => setForm((p) => ({ ...p, zipCode: e.target.value }))}
-                placeholder="Ex.: 63500000"
-                maxLength={9}
+                onChange={(e) => setForm((p) => ({ ...p, zipCode: normalizeZipDigits(e.target.value) }))}
+                placeholder="Somente números (8 dígitos)"
+                inputMode="numeric"
+                maxLength={8}
                 disabled={saving}
               />
             </Field>
@@ -430,9 +435,9 @@ export function ClientsPage() {
             <Field label="Endereço" full>
               <input
                 value={form.address}
-                onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+                onChange={(e) => setForm((p) => ({ ...p, address: e.target.value.slice(0, 160) }))}
                 placeholder="Ex.: Avenida Santos Dumont, 455"
-                maxLength={120}
+                maxLength={160}
                 disabled={saving}
               />
             </Field>
@@ -440,9 +445,9 @@ export function ClientsPage() {
             <Field label="Bairro">
               <input
                 value={form.district}
-                onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))}
+                onChange={(e) => setForm((p) => ({ ...p, district: e.target.value.slice(0, 80) }))}
                 placeholder="Ex.: Centro"
-                maxLength={60}
+                maxLength={80}
                 disabled={saving}
               />
             </Field>
@@ -450,9 +455,9 @@ export function ClientsPage() {
             <Field label="Cidade">
               <input
                 value={form.city}
-                onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
+                onChange={(e) => setForm((p) => ({ ...p, city: e.target.value.slice(0, 80) }))}
                 placeholder="Ex.: Fortaleza"
-                maxLength={60}
+                maxLength={80}
                 disabled={saving}
               />
             </Field>
@@ -460,7 +465,7 @@ export function ClientsPage() {
             <Field label="Estado" full>
               <input
                 value={form.state}
-                onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))}
+                onChange={(e) => setForm((p) => ({ ...p, state: e.target.value.toUpperCase().slice(0, 2) }))}
                 placeholder="Ex.: CE"
                 maxLength={2}
                 disabled={saving}
@@ -468,119 +473,55 @@ export function ClientsPage() {
             </Field>
           </FormGrid>
 
-          <Muted style={{ marginTop: 10 }}>* Campos obrigatórios</Muted>
+          <div style={{ marginTop: 10 }}>
+            <Muted>* Campos obrigatórios</Muted>
+          </div>
         </form>
       </Modal>
 
-      {/* EDIT */}
+      {/* MODAL VIEW */}
       <Modal
-        title="Editar cliente"
-        subtitle={selected ? `Editando: ${selected.name}` : ""}
-        isOpen={isEditOpen}
-        onClose={closeModals}
+        title="Visualizar cliente"
+        subtitle={selected ? `ID: ${selected.id} • Cadastrado em: ${formatDateTimeBR(selected.createdAt)}` : ""}
+        isOpen={isViewOpen}
+        onClose={closeAllModals}
         disableClose={saving}
-        footer={modalFooterEdit}
+        footer={
+          <Button type="button" variant="secondary" onClick={closeAllModals} disabled={saving}>
+            Fechar
+          </Button>
+        }
       >
-        <form id="edit-client-form" onSubmit={handleUpdate}>
-          {saveError && <AlertError className="mb-12">{saveError}</AlertError>}
+        {!selected ? (
+          <Muted>Sem dados.</Muted>
+        ) : (
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados principais</div>
+              <div><strong>Nome:</strong> {selected.name}</div>
+              <div><strong>Telefone:</strong> {selected.phone}</div>
+              <div><strong>Email:</strong> {selected.email || "-"}</div>
+              <div><strong>CPF/CNPJ:</strong> {selected.cpfCnpj}</div>
+              <div><strong>RG/IE:</strong> {selected.rgIe || "-"}</div>
+            </div>
 
-          <FormGrid>
-            <Field label="Nome *">
-              <input
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                required
-                maxLength={80}
-                disabled={saving}
-              />
-            </Field>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Endereço</div>
+              <div><strong>CEP:</strong> {selected.zipCode || "-"}</div>
+              <div><strong>Endereço:</strong> {selected.address || "-"}</div>
+              <div><strong>Bairro:</strong> {selected.district || "-"}</div>
+              <div><strong>Cidade:</strong> {selected.city || "-"}</div>
+              <div><strong>Estado:</strong> {selected.state || "-"}</div>
+            </div>
 
-            <Field label="Telefone *">
-              <input
-                value={form.phone}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                required
-                maxLength={20}
-                disabled={saving}
-              />
-            </Field>
-
-            <Field label="Email">
-              <input
-                value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                maxLength={120}
-                disabled={saving}
-              />
-            </Field>
-
-            <Field label="CPF/CNPJ *">
-              <input
-                value={form.cpfCnpj}
-                onChange={(e) => setForm((p) => ({ ...p, cpfCnpj: e.target.value }))}
-                required
-                maxLength={18}
-                disabled={saving}
-              />
-            </Field>
-
-            <Field label="RG/IE">
-              <input
-                value={form.rgIe}
-                onChange={(e) => setForm((p) => ({ ...p, rgIe: e.target.value }))}
-                maxLength={20}
-                disabled={saving}
-              />
-            </Field>
-
-            <Field label="CEP">
-              <input
-                value={form.zipCode}
-                onChange={(e) => setForm((p) => ({ ...p, zipCode: e.target.value }))}
-                maxLength={9}
-                disabled={saving}
-              />
-            </Field>
-
-            <Field label="Endereço" full>
-              <input
-                value={form.address}
-                onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
-                maxLength={120}
-                disabled={saving}
-              />
-            </Field>
-
-            <Field label="Bairro">
-              <input
-                value={form.district}
-                onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))}
-                maxLength={60}
-                disabled={saving}
-              />
-            </Field>
-
-            <Field label="Cidade">
-              <input
-                value={form.city}
-                onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
-                maxLength={60}
-                disabled={saving}
-              />
-            </Field>
-
-            <Field label="Estado" full>
-              <input
-                value={form.state}
-                onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))}
-                maxLength={2}
-                disabled={saving}
-              />
-            </Field>
-          </FormGrid>
-
-          <Muted style={{ marginTop: 10 }}>* Campos obrigatórios</Muted>
-        </form>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Sistema</div>
+              <div><strong>ID:</strong> {selected.id}</div>
+              <div><strong>Criado em:</strong> {formatDateTimeBR(selected.createdAt)}</div>
+              <div><strong>Atualizado em:</strong> {formatDateTimeBR(selected.updatedAt)}</div>
+            </div>
+          </div>
+        )}
       </Modal>
     </section>
   );
