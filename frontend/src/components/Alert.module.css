@@ -1,10 +1,10 @@
-.error {
+.alertError {
   background: #fee2e2;
   border: 1px solid #fecaca;
   color: #991b1b;
   padding: 12px;
   border-radius: 12px;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .muted {

@@ -34,6 +34,27 @@ function safeErrorMessage(err: unknown) {
   return "Não foi possível concluir a operação.";
 }
 
+function ModalError({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        marginBottom: 12,
+        borderRadius: 12,
+        border: "1px solid #fecdca",
+        background: "#fee4e2",
+        color: "#7a271a",
+        padding: "12px 12px",
+        fontWeight: 900,
+        boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
+      }}
+      role="alert"
+      aria-live="polite"
+    >
+      {message}
+    </div>
+  );
+}
+
 const STATUS_LABEL: Record<ServiceOrderStatus, string> = {
   ABERTA: "ABERTA",
   EM_ANALISE: "EM ANÁLISE",
@@ -129,9 +150,13 @@ function normalizeCpfCnpj(v: string) {
 }
 
 function formatClientAddress(c: Client) {
-  const parts = [(c as any).address, (c as any).district, (c as any).city, (c as any).state, (c as any).zipCode].filter(
-    (x) => typeof x === "string" && x.trim().length > 0
-  );
+  const parts = [
+    (c as any).address,
+    (c as any).district,
+    (c as any).city,
+    (c as any).state,
+    (c as any).zipCode,
+  ].filter((x) => typeof x === "string" && x.trim().length > 0);
   return parts.join(" • ");
 }
 
@@ -205,14 +230,14 @@ function calcBudgetTotal(budget: ServiceOrderBudget | null | undefined) {
   return itemsTotal + travel + third - discount;
 }
 
-// regras de botões (conforme você pediu)
+// regras de botões
 function buttonsMode(status: ServiceOrderStatus) {
   const allEnabled = status === "ABERTA" || status === "EM_ANALISE" || status === "AGUARDANDO_APROVACAO";
   const onlyView = status === "EM_MANUTENCAO" || status === "FINALIZADA" || status === "ENTREGUE" || status === "CANCELADA";
   return { allEnabled, onlyView };
 }
 
-// visualização por status (mantém regra anterior)
+// visualização por status
 type ViewMode = "ENTRY" | "BUDGET" | "PAYMENT";
 function getViewMode(status: ServiceOrderStatus): ViewMode {
   if (status === "ENTREGUE") return "PAYMENT";
@@ -224,11 +249,9 @@ function nextStatusesAllowed(current: ServiceOrderStatus): ServiceOrderStatus[] 
   if (current === "CANCELADA" || current === "ENTREGUE") return [];
   const idx = STATUS_FLOW.indexOf(current);
   if (idx < 0) return [];
-  // permitido: somente o PRÓXIMO do fluxo OU cancelamento (quando ainda cancelável)
   const next = STATUS_FLOW[idx + 1];
   const out: ServiceOrderStatus[] = [];
   if (next && next !== "CANCELADA") out.push(next);
-  // cancelar permitido apenas até AGUARDANDO_APROVACAO (inclusive)
   if (current === "ABERTA" || current === "EM_ANALISE" || current === "AGUARDANDO_APROVACAO") out.push("CANCELADA");
   return out;
 }
@@ -251,10 +274,10 @@ export function ServiceOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // erro “da página” (somente listagem / load / refresh)
   const [pageError, setPageError] = useState<string | null>(null);
 
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
-  const [rowErrorById, setRowErrorById] = useState<Record<string, string>>({});
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -272,6 +295,13 @@ export function ServiceOrdersPage() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [nextStatus, setNextStatus] = useState<ServiceOrderStatus>("EM_ANALISE");
   const [statusOptions, setStatusOptions] = useState<ServiceOrderStatus[]>([]);
+
+  // ERROS DENTRO DOS MODAIS
+  const [createModalError, setCreateModalError] = useState<string | null>(null);
+  const [editModalError, setEditModalError] = useState<string | null>(null);
+  const [statusModalError, setStatusModalError] = useState<string | null>(null);
+  const [cancelModalError, setCancelModalError] = useState<string | null>(null);
+  const [budgetModalError, setBudgetModalError] = useState<string | null>(null);
 
   // dropdown CPF
   const [cpfQuery, setCpfQuery] = useState("");
@@ -299,19 +329,6 @@ export function ServiceOrdersPage() {
       else delete next[id];
       return next;
     });
-  }
-
-  function clearRowError(id: string) {
-    setRowErrorById((prev) => {
-      if (!prev[id]) return prev;
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  }
-
-  function setRowError(id: string, message: string) {
-    setRowErrorById((prev) => ({ ...prev, [id]: message }));
   }
 
   async function loadAll() {
@@ -357,18 +374,18 @@ export function ServiceOrdersPage() {
   }, []);
 
   function openCreate() {
-    setPageError(null);
     setSelected(null);
-
     setForm(initialForm);
     setCpfQuery("");
     setCpfOpen(false);
 
+    setCreateModalError(null);
     setIsCreateOpen(true);
   }
 
   function closeAllModals() {
     if (modalSaving) return;
+
     setIsCreateOpen(false);
     setIsEditOpen(false);
     setIsStatusOpen(false);
@@ -377,6 +394,13 @@ export function ServiceOrdersPage() {
     setIsViewOpen(false);
     setIsBudgetOpen(false);
     setCpfOpen(false);
+
+    
+    setCreateModalError(null);
+    setEditModalError(null);
+    setStatusModalError(null);
+    setCancelModalError(null);
+    setBudgetModalError(null);
   }
 
   function applyClientSelection(c: Client) {
@@ -409,7 +433,7 @@ export function ServiceOrdersPage() {
   }
 
   async function handleCreate() {
-    setPageError(null);
+    setCreateModalError(null);
 
     const clientId = normalizeText(form.clientId);
     const clientCpfCnpj = normalizeText(form.clientCpfCnpj);
@@ -418,10 +442,10 @@ export function ServiceOrdersPage() {
     const symptoms = normalizeText(form.symptoms);
 
     if (!clientId || !clientCpfCnpj) {
-      return setPageError("Digite o CPF/CNPJ e selecione o cliente encontrado na lista.");
+      return setCreateModalError("Digite o CPF/CNPJ e selecione o cliente encontrado na lista.");
     }
-    if (!equipmentType) return setPageError("Informe o tipo do equipamento.");
-    if (!symptoms) return setPageError("Informe os sintomas.");
+    if (!equipmentType) return setCreateModalError("Informe o tipo do equipamento.");
+    if (!symptoms) return setCreateModalError("Informe os sintomas.");
 
     setModalSaving(true);
     try {
@@ -443,15 +467,15 @@ export function ServiceOrdersPage() {
       setOrders((prev) => [created, ...prev]);
       closeAllModals();
     } catch (err) {
-      setPageError(safeErrorMessage(err));
+      setCreateModalError(safeErrorMessage(err));
     } finally {
       setModalSaving(false);
     }
   }
 
   function openEdit(order: ServiceOrder) {
-    setPageError(null);
     setSelected(order);
+    setEditModalError(null);
 
     const c = order.client ?? clientsById.get(order.clientId) ?? null;
 
@@ -483,7 +507,8 @@ export function ServiceOrdersPage() {
 
   async function handleEdit() {
     if (!selected) return;
-    setPageError(null);
+
+    setEditModalError(null);
 
     const clientId = normalizeText(form.clientId);
     const clientCpfCnpj = normalizeText(form.clientCpfCnpj);
@@ -491,13 +516,12 @@ export function ServiceOrdersPage() {
     const equipmentType = normalizeText(form.equipmentType);
     const symptoms = normalizeText(form.symptoms);
 
-    if (!clientId) return setPageError("Cliente inválido na OS.");
-    if (!clientCpfCnpj) return setPageError("CPF/CNPJ inválido na OS.");
-    if (!equipmentType) return setPageError("Informe o tipo do equipamento.");
-    if (!symptoms) return setPageError("Informe os sintomas.");
+    if (!clientId) return setEditModalError("Cliente inválido na OS.");
+    if (!clientCpfCnpj) return setEditModalError("CPF/CNPJ inválido na OS.");
+    if (!equipmentType) return setEditModalError("Informe o tipo do equipamento.");
+    if (!symptoms) return setEditModalError("Informe os sintomas.");
 
     setModalSaving(true);
-    clearRowError(selected.id);
     setBusy(selected.id, true);
 
     try {
@@ -519,7 +543,7 @@ export function ServiceOrdersPage() {
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
       closeAllModals();
     } catch (err) {
-      setRowError(selected.id, safeErrorMessage(err));
+      setEditModalError(safeErrorMessage(err));
     } finally {
       setBusy(selected.id, false);
       setModalSaving(false);
@@ -527,8 +551,8 @@ export function ServiceOrdersPage() {
   }
 
   function openStatus(order: ServiceOrder) {
-    setPageError(null);
     setSelected(order);
+    setStatusModalError(null);
 
     const opts = nextStatusesAllowed(order.status);
     setStatusOptions(opts);
@@ -539,10 +563,10 @@ export function ServiceOrdersPage() {
 
   async function handleStatus() {
     if (!selected) return;
-    setPageError(null);
+
+    setStatusModalError(null);
 
     setModalSaving(true);
-    clearRowError(selected.id);
     setBusy(selected.id, true);
 
     try {
@@ -550,7 +574,7 @@ export function ServiceOrdersPage() {
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
       closeAllModals();
     } catch (err) {
-      setRowError(selected.id, safeErrorMessage(err));
+      setStatusModalError(safeErrorMessage(err));
     } finally {
       setBusy(selected.id, false);
       setModalSaving(false);
@@ -568,17 +592,17 @@ export function ServiceOrdersPage() {
   }
 
   function openCancel(order: ServiceOrder) {
-    setPageError(null);
     setSelected(order);
+    setCancelModalError(null);
     setIsCancelOpen(true);
   }
 
   async function handleCancel() {
     if (!selected) return;
-    setPageError(null);
+
+    setCancelModalError(null);
 
     setModalSaving(true);
-    clearRowError(selected.id);
     setBusy(selected.id, true);
 
     try {
@@ -586,7 +610,7 @@ export function ServiceOrdersPage() {
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
       closeAllModals();
     } catch (err) {
-      setRowError(selected.id, safeErrorMessage(err));
+      setCancelModalError(safeErrorMessage(err));
     } finally {
       setBusy(selected.id, false);
       setModalSaving(false);
@@ -594,8 +618,8 @@ export function ServiceOrdersPage() {
   }
 
   function openBudget(order: ServiceOrder) {
-    setPageError(null);
     setSelected(order);
+    setBudgetModalError(null);
 
     const b = order.budget;
     setBudgetForm({
@@ -620,13 +644,7 @@ export function ServiceOrdersPage() {
       ...p,
       items: [
         ...p.items,
-        {
-          id: newLocalId(),
-          description: "",
-          technician: "",
-          qty: "1",
-          unitValue: "0",
-        },
+        { id: newLocalId(), description: "", technician: "", qty: "1", unitValue: "0" },
       ],
     }));
   }
@@ -637,10 +655,10 @@ export function ServiceOrdersPage() {
 
   async function handleSaveBudget() {
     if (!selected) return;
-    setPageError(null);
+
+    setBudgetModalError(null);
 
     setModalSaving(true);
-    clearRowError(selected.id);
     setBusy(selected.id, true);
 
     try {
@@ -660,15 +678,11 @@ export function ServiceOrdersPage() {
       };
 
       const saved = await upsertServiceOrderBudget(selected.id, payload);
-
-      // atualiza a OS na lista (mantendo as outras infos) e injeta o budget salvo
-      setOrders((prev) =>
-        prev.map((o) => (o.id === selected.id ? ({ ...o, budget: saved } as any) : o))
-      );
+      setOrders((prev) => prev.map((o) => (o.id === selected.id ? ({ ...o, budget: saved } as any) : o)));
 
       closeAllModals();
     } catch (err) {
-      setRowError(selected.id, safeErrorMessage(err));
+      setBudgetModalError(safeErrorMessage(err));
     } finally {
       setBusy(selected.id, false);
       setModalSaving(false);
@@ -725,8 +739,6 @@ export function ServiceOrdersPage() {
                   const { short, truncated } = truncateOneLine(o.symptoms, 70);
 
                   const rowBusy = !!busyById[o.id];
-                  const rowError = rowErrorById[o.id];
-
                   const { allEnabled, onlyView } = buttonsMode(o.status);
                   const editIsBudget = o.status === "AGUARDANDO_APROVACAO";
 
@@ -784,12 +796,6 @@ export function ServiceOrdersPage() {
                             </button>
                           </>
                         )}
-
-                        {rowError && (
-                          <div style={{ marginTop: 6, color: "#b42318", fontSize: 12, fontWeight: 600 }}>
-                            {rowError}
-                          </div>
-                        )}
                       </td>
 
                       <td>
@@ -803,13 +809,7 @@ export function ServiceOrdersPage() {
                             variant="secondary"
                             onClick={() => (editIsBudget ? openBudget(o) : openEdit(o))}
                             disabled={rowBusy || onlyView}
-                            title={
-                              onlyView
-                                ? "Neste status não é possível editar."
-                                : editIsBudget
-                                ? "Editar orçamento"
-                                : "Editar entrada"
-                            }
+                            title={onlyView ? "Neste status não é possível editar." : editIsBudget ? "Editar orçamento" : "Editar entrada"}
                           >
                             {editIsBudget ? "Orçamento" : "Editar"}
                           </Button>
@@ -819,11 +819,7 @@ export function ServiceOrdersPage() {
                             variant="danger"
                             onClick={() => openCancel(o)}
                             disabled={rowBusy || !(allEnabled && (o.status === "ABERTA" || o.status === "EM_ANALISE" || o.status === "AGUARDANDO_APROVACAO"))}
-                            title={
-                              allEnabled
-                                ? "Cancelar OS"
-                                : "Este status não pode ser cancelado."
-                            }
+                            title={allEnabled ? "Cancelar OS" : "Este status não pode ser cancelado."}
                           >
                             Cancelar
                           </Button>
@@ -856,6 +852,8 @@ export function ServiceOrdersPage() {
           </>
         }
       >
+        {createModalError ? <ModalError message={createModalError} /> : null}
+
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Dados do cliente</div>
 
@@ -998,8 +996,7 @@ export function ServiceOrdersPage() {
 
       {/* EDIT (entrada) */}
       <Modal
-        title="Editar OS (Entrada)"
-        subtitle="Somente ABERTA e EM ANÁLISE podem editar a entrada."
+        title="Editar Ordem de Serviço"
         isOpen={isEditOpen}
         onClose={closeAllModals}
         disableClose={modalSaving}
@@ -1014,6 +1011,8 @@ export function ServiceOrdersPage() {
           </>
         }
       >
+        {editModalError ? <ModalError message={editModalError} /> : null}
+
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Dados do cliente</div>
 
@@ -1131,6 +1130,8 @@ export function ServiceOrdersPage() {
           </>
         }
       >
+        {statusModalError ? <ModalError message={statusModalError} /> : null}
+
         {statusOptions.length === 0 ? (
           <Muted>Nenhuma transição de status disponível.</Muted>
         ) : (
@@ -1166,6 +1167,7 @@ export function ServiceOrdersPage() {
           </>
         }
       >
+        {cancelModalError ? <ModalError message={cancelModalError} /> : null}
         <Muted>Essa ação muda o status para CANCELADA.</Muted>
       </Modal>
 
@@ -1220,6 +1222,8 @@ export function ServiceOrdersPage() {
           </>
         }
       >
+        {budgetModalError ? <ModalError message={budgetModalError} /> : null}
+
         {!selected ? (
           <Muted>Sem dados.</Muted>
         ) : (
@@ -1339,7 +1343,9 @@ export function ServiceOrdersPage() {
         title="Visualizar"
         subtitle={
           selected
-            ? `OS #${selected.osNumber} • ${STATUS_LABEL[selected.status]} • Entrada: ${formatDateTimeBR(selected.entryDate || selected.createdAt)}`
+            ? `OS #${selected.osNumber} • ${STATUS_LABEL[selected.status]} • Entrada: ${formatDateTimeBR(
+                selected.entryDate || selected.createdAt
+              )}`
             : ""
         }
         isOpen={isViewOpen}
@@ -1539,8 +1545,7 @@ export function ServiceOrdersPage() {
               </div>
 
               <Muted>
-                Observação: ainda não existe módulo de “pagamento” no backend. Aqui estamos apenas exibindo um comprovante
-                com base no orçamento salvo.
+                Observação: ainda não existe módulo de “pagamento” no backend. Aqui estamos apenas exibindo um comprovante com base no orçamento salvo.
               </Muted>
             </div>
           </div>
