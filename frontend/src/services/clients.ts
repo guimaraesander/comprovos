@@ -3,17 +3,17 @@ import { api } from "./api";
 export type Client = {
   id: string;
   name: string;
+  phone: string;
   email?: string | null;
-  phone?: string | null;
 
-  document?: string | null; // CPF/CNPJ
+  cpfCnpj: string;
   rgIe?: string | null;
 
-  cep?: string | null;
   address?: string | null;
-  neighborhood?: string | null; // BAIRRO
+  district?: string | null;
   city?: string | null;
   state?: string | null;
+  zipCode?: string | null;
 
   createdAt?: string;
   updatedAt?: string;
@@ -21,31 +21,38 @@ export type Client = {
 
 export type CreateClientInput = {
   name: string;
-  email?: string;
-  phone?: string;
+  phone: string;
+  cpfCnpj: string;
 
-  document?: string;
-  rgIe?: string;
+  email?: string | null;
+  rgIe?: string | null;
 
-  cep?: string;
-  address?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
+  address?: string | null;
+  district?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
 };
 
+export type UpdateClientInput = Partial<CreateClientInput>;
+
 export async function listClients(): Promise<Client[]> {
-  const res = await api.get("/clients");
+  const res = await api.get<Client[]>("/clients");
   return res.data;
 }
 
 export async function createClient(payload: CreateClientInput): Promise<Client> {
-  const res = await api.post("/clients", payload);
+  const res = await api.post<Client>("/clients", payload);
   return res.data;
 }
 
 export async function getClientById(id: string): Promise<Client> {
-  const res = await api.get(`/clients/${id}`);
+  const res = await api.get<Client>(`/clients/${id}`);
+  return res.data;
+}
+
+export async function updateClient(id: string, payload: UpdateClientInput): Promise<Client> {
+  const res = await api.put<Client>(`/clients/${id}`, payload);
   return res.data;
 }
 
