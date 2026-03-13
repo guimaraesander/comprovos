@@ -12,12 +12,15 @@ import { AlertError, Muted } from "../components/Alert";
 import { listClients, type Client } from "../services/clients";
 import {
   createServiceOrder,
-  deleteServiceOrder,
   listServiceOrders,
   updateServiceOrder,
   updateServiceOrderStatus,
+  upsertServiceOrderBudget,
   type ServiceOrder,
   type ServiceOrderStatus,
+  type ServiceOrderBudget,
+  type ServiceOrderBudgetItem,
+  type UpsertBudgetInput,
 } from "../services/serviceOrders";
 
 import styles from "./ServiceOrdersPage.module.css";
@@ -41,21 +44,21 @@ const STATUS_LABEL: Record<ServiceOrderStatus, string> = {
   CANCELADA: "CANCELADA",
 };
 
-const STATUS_OPTIONS: ServiceOrderStatus[] = [
+// fluxo “pra frente” (não pode voltar)
+const STATUS_FLOW: ServiceOrderStatus[] = [
   "ABERTA",
   "EM_ANALISE",
   "AGUARDANDO_APROVACAO",
   "EM_MANUTENCAO",
   "FINALIZADA",
   "ENTREGUE",
-  "CANCELADA",
+  "CANCELADA", // cancelamento é um “fim”
 ];
 
 type FormState = {
   clientId: string;
-  clientCpfCnpj: string; // congelado na OS (não precisa ser campo visível no CREATE)
+  clientCpfCnpj: string;
 
-  // preview do cliente (somente leitura)
   clientName: string;
   clientPhone: string;
   clientEmail: string;
@@ -70,9 +73,6 @@ type FormState = {
   symptoms: string;
   accessories: string;
   observations: string;
-
-  budgetValue: string;
-  finalValue: string;
 };
 
 const initialForm: FormState = {
@@ -93,17 +93,31 @@ const initialForm: FormState = {
   symptoms: "",
   accessories: "",
   observations: "",
-
-  budgetValue: "",
-  finalValue: "",
 };
 
-function toNumberOrUndefined(v: string) {
-  const t = v.trim();
-  if (!t) return undefined;
-  const n = Number(t.replace(",", "."));
-  return Number.isFinite(n) ? n : undefined;
-}
+type BudgetFormItem = {
+  id: string;
+  description: string;
+  technician: string;
+  qty: string;
+  unitValue: string;
+};
+
+type BudgetForm = {
+  travelFee: string;
+  thirdPartyFee: string;
+  discount: string;
+  note: string;
+  items: BudgetFormItem[];
+};
+
+const initialBudgetForm: BudgetForm = {
+  travelFee: "0",
+  thirdPartyFee: "0",
+  discount: "0",
+  note: "",
+  items: [],
+};
 
 function normalizeText(v: string) {
   const t = v.trim();
@@ -115,14 +129,9 @@ function normalizeCpfCnpj(v: string) {
 }
 
 function formatClientAddress(c: Client) {
-  const parts = [
-    (c as any).address,
-    (c as any).district,
-    (c as any).city,
-    (c as any).state,
-    (c as any).zipCode,
-  ].filter((x) => typeof x === "string" && x.trim().length > 0);
-
+  const parts = [(c as any).address, (c as any).district, (c as any).city, (c as any).state, (c as any).zipCode].filter(
+    (x) => typeof x === "string" && x.trim().length > 0
+  );
   return parts.join(" • ");
 }
 
@@ -148,24 +157,91 @@ function statusBadgeStyle(status: ServiceOrderStatus): React.CSSProperties {
     whiteSpace: "nowrap",
   };
 
-  if (status === "CANCELADA")
-    return { ...base, background: "#fee4e2", color: "#b42318", borderColor: "#fecdca" };
-  if (status === "ENTREGUE")
-    return { ...base, background: "#d1fadf", color: "#067647", borderColor: "#a6f4c5" };
-  if (status === "FINALIZADA")
-    return { ...base, background: "#e0eaff", color: "#175cd3", borderColor: "#c7d7fe" };
-  if (status === "EM_MANUTENCAO")
-    return { ...base, background: "#fffaeb", color: "#b54708", borderColor: "#fedf89" };
+  if (status === "CANCELADA") return { ...base, background: "#fee4e2", color: "#b42318", borderColor: "#fecdca" };
+  if (status === "ENTREGUE") return { ...base, background: "#d1fadf", color: "#067647", borderColor: "#a6f4c5" };
+  if (status === "FINALIZADA") return { ...base, background: "#e0eaff", color: "#175cd3", borderColor: "#c7d7fe" };
+  if (status === "EM_MANUTENCAO") return { ...base, background: "#fffaeb", color: "#b54708", borderColor: "#fedf89" };
   if (status === "AGUARDANDO_APROVACAO")
     return { ...base, background: "#fef0c7", color: "#7a2e0e", borderColor: "#fedf89" };
-  if (status === "EM_ANALISE")
-    return { ...base, background: "#f0f9ff", color: "#026aa2", borderColor: "#b9e6fe" };
+  if (status === "EM_ANALISE") return { ...base, background: "#f0f9ff", color: "#026aa2", borderColor: "#b9e6fe" };
   return base;
 }
 
 function equipmentLabel(order: ServiceOrder) {
   const parts = [order.equipmentType, order.equipmentBrand, order.equipmentModel].filter(Boolean);
   return parts.join(" ") || "-";
+}
+
+function formatDateTimeBR(iso?: string) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+}
+
+function toMoneyNumber(v: number | string | null | undefined) {
+  if (v === null || v === undefined) return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function calcBudgetItemsTotal(items: ServiceOrderBudgetItem[] | undefined) {
+  const list = Array.isArray(items) ? items : [];
+  return list.reduce((acc, it) => acc + Number(it.qty || 0) * toMoneyNumber(it.unitValue), 0);
+}
+
+function calcBudgetTotal(budget: ServiceOrderBudget | null | undefined) {
+  if (!budget) return 0;
+  const itemsTotal = calcBudgetItemsTotal(budget.items);
+  const travel = toMoneyNumber(budget.travelFee);
+  const third = toMoneyNumber(budget.thirdPartyFee);
+  const discount = toMoneyNumber(budget.discount);
+  return itemsTotal + travel + third - discount;
+}
+
+// regras de botões (conforme você pediu)
+function buttonsMode(status: ServiceOrderStatus) {
+  const allEnabled = status === "ABERTA" || status === "EM_ANALISE" || status === "AGUARDANDO_APROVACAO";
+  const onlyView = status === "EM_MANUTENCAO" || status === "FINALIZADA" || status === "ENTREGUE" || status === "CANCELADA";
+  return { allEnabled, onlyView };
+}
+
+// visualização por status (mantém regra anterior)
+type ViewMode = "ENTRY" | "BUDGET" | "PAYMENT";
+function getViewMode(status: ServiceOrderStatus): ViewMode {
+  if (status === "ENTREGUE") return "PAYMENT";
+  if (status === "AGUARDANDO_APROVACAO" || status === "EM_MANUTENCAO" || status === "FINALIZADA") return "BUDGET";
+  return "ENTRY";
+}
+
+function nextStatusesAllowed(current: ServiceOrderStatus): ServiceOrderStatus[] {
+  if (current === "CANCELADA" || current === "ENTREGUE") return [];
+  const idx = STATUS_FLOW.indexOf(current);
+  if (idx < 0) return [];
+  // permitido: somente o PRÓXIMO do fluxo OU cancelamento (quando ainda cancelável)
+  const next = STATUS_FLOW[idx + 1];
+  const out: ServiceOrderStatus[] = [];
+  if (next && next !== "CANCELADA") out.push(next);
+  // cancelar permitido apenas até AGUARDANDO_APROVACAO (inclusive)
+  if (current === "ABERTA" || current === "EM_ANALISE" || current === "AGUARDANDO_APROVACAO") out.push("CANCELADA");
+  return out;
+}
+
+function parseMoneyInput(v: string) {
+  const t = v.trim();
+  if (!t) return 0;
+  const n = Number(t.replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function newLocalId() {
+  return `tmp_${Math.random().toString(16).slice(2)}_${Date.now()}`;
 }
 
 export function ServiceOrdersPage() {
@@ -183,14 +259,19 @@ export function ServiceOrdersPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+
+  const [isBudgetOpen, setIsBudgetOpen] = useState(false);
+  const [budgetForm, setBudgetForm] = useState<BudgetForm>(initialBudgetForm);
 
   const [modalSaving, setModalSaving] = useState(false);
 
   const [selected, setSelected] = useState<ServiceOrder | null>(null);
   const [form, setForm] = useState<FormState>(initialForm);
   const [nextStatus, setNextStatus] = useState<ServiceOrderStatus>("EM_ANALISE");
+  const [statusOptions, setStatusOptions] = useState<ServiceOrderStatus[]>([]);
 
   // dropdown CPF
   const [cpfQuery, setCpfQuery] = useState("");
@@ -208,22 +289,7 @@ export function ServiceOrdersPage() {
   const cpfMatches = useMemo(() => {
     const q = normalizeCpfCnpj(cpfQuery);
     if (!q) return [];
-
-    // remove duplicados por cpfCnpj (caso o backend ainda permita)
-    const seen = new Set<string>();
-
-    const hits = clients
-      .filter((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")).startsWith(q))
-      .filter((c: any) => {
-        const key = normalizeCpfCnpj(String(c.cpfCnpj || ""));
-        if (!key) return false;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .slice(0, 8);
-
-    return hits;
+    return clients.filter((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")).startsWith(q)).slice(0, 8);
   }, [cpfQuery, clients]);
 
   function setBusy(id: string, value: boolean) {
@@ -280,7 +346,6 @@ export function ServiceOrdersPage() {
     void loadAll();
   }, []);
 
-  // fecha dropdown clicando fora
   useEffect(() => {
     function onDocDown(e: MouseEvent) {
       const el = cpfBoxRef.current;
@@ -295,7 +360,6 @@ export function ServiceOrdersPage() {
     setPageError(null);
     setSelected(null);
 
-    // tudo zerado
     setForm(initialForm);
     setCpfQuery("");
     setCpfOpen(false);
@@ -308,8 +372,10 @@ export function ServiceOrdersPage() {
     setIsCreateOpen(false);
     setIsEditOpen(false);
     setIsStatusOpen(false);
-    setIsDeleteOpen(false);
     setIsDetailsOpen(false);
+    setIsCancelOpen(false);
+    setIsViewOpen(false);
+    setIsBudgetOpen(false);
     setCpfOpen(false);
   }
 
@@ -318,7 +384,7 @@ export function ServiceOrdersPage() {
     setForm((p) => ({
       ...p,
       clientId: c.id,
-      clientCpfCnpj: cpf, // ✅ preenchido automaticamente (vai pro backend)
+      clientCpfCnpj: cpf,
 
       clientName: c.name || "",
       clientPhone: String((c as any).phone || ""),
@@ -372,8 +438,6 @@ export function ServiceOrdersPage() {
         symptoms,
         accessories: normalizeText(form.accessories) || undefined,
         observations: normalizeText(form.observations) || undefined,
-        budgetValue: toNumberOrUndefined(form.budgetValue),
-        finalValue: toNumberOrUndefined(form.finalValue),
       });
 
       setOrders((prev) => [created, ...prev]);
@@ -409,9 +473,6 @@ export function ServiceOrdersPage() {
       symptoms: order.symptoms || "",
       accessories: order.accessories ?? "",
       observations: order.observations ?? "",
-
-      budgetValue: order.budgetValue != null ? String(order.budgetValue) : "",
-      finalValue: order.finalValue != null ? String(order.finalValue) : "",
     });
 
     setCpfQuery(order.clientCpfCnpj || "");
@@ -453,8 +514,6 @@ export function ServiceOrdersPage() {
         symptoms,
         accessories: normalizeText(form.accessories) || null,
         observations: normalizeText(form.observations) || null,
-        budgetValue: toNumberOrUndefined(form.budgetValue) ?? null,
-        finalValue: toNumberOrUndefined(form.finalValue) ?? null,
       });
 
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
@@ -467,24 +526,14 @@ export function ServiceOrdersPage() {
     }
   }
 
-  function suggestNextStatus(order: ServiceOrder): ServiceOrderStatus {
-    return order.status === "ABERTA"
-      ? "EM_ANALISE"
-      : order.status === "EM_ANALISE"
-      ? "AGUARDANDO_APROVACAO"
-      : order.status === "AGUARDANDO_APROVACAO"
-      ? "EM_MANUTENCAO"
-      : order.status === "EM_MANUTENCAO"
-      ? "FINALIZADA"
-      : order.status === "FINALIZADA"
-      ? "ENTREGUE"
-      : order.status;
-  }
-
   function openStatus(order: ServiceOrder) {
     setPageError(null);
     setSelected(order);
-    setNextStatus(suggestNextStatus(order));
+
+    const opts = nextStatusesAllowed(order.status);
+    setStatusOptions(opts);
+    setNextStatus(opts[0] ?? order.status);
+
     setIsStatusOpen(true);
   }
 
@@ -508,13 +557,23 @@ export function ServiceOrdersPage() {
     }
   }
 
-  function openDelete(order: ServiceOrder) {
-    setPageError(null);
+  function openDetails(order: ServiceOrder) {
     setSelected(order);
-    setIsDeleteOpen(true);
+    setIsDetailsOpen(true);
   }
 
-  async function handleDelete() {
+  function openView(order: ServiceOrder) {
+    setSelected(order);
+    setIsViewOpen(true);
+  }
+
+  function openCancel(order: ServiceOrder) {
+    setPageError(null);
+    setSelected(order);
+    setIsCancelOpen(true);
+  }
+
+  async function handleCancel() {
     if (!selected) return;
     setPageError(null);
 
@@ -523,8 +582,8 @@ export function ServiceOrdersPage() {
     setBusy(selected.id, true);
 
     try {
-      await deleteServiceOrder(selected.id);
-      setOrders((prev) => prev.filter((o) => o.id !== selected.id));
+      const updated = await updateServiceOrderStatus(selected.id, { status: "CANCELADA" });
+      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
       closeAllModals();
     } catch (err) {
       setRowError(selected.id, safeErrorMessage(err));
@@ -534,10 +593,89 @@ export function ServiceOrdersPage() {
     }
   }
 
-  function openDetails(order: ServiceOrder) {
+  function openBudget(order: ServiceOrder) {
+    setPageError(null);
     setSelected(order);
-    setIsDetailsOpen(true);
+
+    const b = order.budget;
+    setBudgetForm({
+      travelFee: String(toMoneyNumber(b?.travelFee ?? 0)),
+      thirdPartyFee: String(toMoneyNumber(b?.thirdPartyFee ?? 0)),
+      discount: String(toMoneyNumber(b?.discount ?? 0)),
+      note: b?.note ? String(b.note) : "",
+      items: (b?.items || []).map((it) => ({
+        id: it.id,
+        description: it.description || "",
+        technician: it.technician ? String(it.technician) : "",
+        qty: String(it.qty ?? 1),
+        unitValue: String(toMoneyNumber(it.unitValue)),
+      })),
+    });
+
+    setIsBudgetOpen(true);
   }
+
+  function addBudgetItem() {
+    setBudgetForm((p) => ({
+      ...p,
+      items: [
+        ...p.items,
+        {
+          id: newLocalId(),
+          description: "",
+          technician: "",
+          qty: "1",
+          unitValue: "0",
+        },
+      ],
+    }));
+  }
+
+  function removeBudgetItem(id: string) {
+    setBudgetForm((p) => ({ ...p, items: p.items.filter((x) => x.id !== id) }));
+  }
+
+  async function handleSaveBudget() {
+    if (!selected) return;
+    setPageError(null);
+
+    setModalSaving(true);
+    clearRowError(selected.id);
+    setBusy(selected.id, true);
+
+    try {
+      const payload: UpsertBudgetInput = {
+        travelFee: parseMoneyInput(budgetForm.travelFee),
+        thirdPartyFee: parseMoneyInput(budgetForm.thirdPartyFee),
+        discount: parseMoneyInput(budgetForm.discount),
+        note: normalizeText(budgetForm.note) || null,
+        items: budgetForm.items
+          .map((it) => ({
+            description: normalizeText(it.description),
+            technician: normalizeText(it.technician) || null,
+            qty: Math.max(1, Number(it.qty || 1)),
+            unitValue: parseMoneyInput(it.unitValue),
+          }))
+          .filter((it) => it.description.length > 0),
+      };
+
+      const saved = await upsertServiceOrderBudget(selected.id, payload);
+
+      // atualiza a OS na lista (mantendo as outras infos) e injeta o budget salvo
+      setOrders((prev) =>
+        prev.map((o) => (o.id === selected.id ? ({ ...o, budget: saved } as any) : o))
+      );
+
+      closeAllModals();
+    } catch (err) {
+      setRowError(selected.id, safeErrorMessage(err));
+    } finally {
+      setBusy(selected.id, false);
+      setModalSaving(false);
+    }
+  }
+
+  const viewMode: ViewMode = selected ? getViewMode(selected.status) : "ENTRY";
 
   return (
     <section className="content-body">
@@ -571,7 +709,7 @@ export function ServiceOrdersPage() {
                 <th>CPF/CNPJ</th>
                 <th>Equipamento</th>
                 <th>Sintomas</th>
-                <th style={{ width: 240 }}>Ações</th>
+                <th style={{ width: 300 }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -589,6 +727,9 @@ export function ServiceOrdersPage() {
                   const rowBusy = !!busyById[o.id];
                   const rowError = rowErrorById[o.id];
 
+                  const { allEnabled, onlyView } = buttonsMode(o.status);
+                  const editIsBudget = o.status === "AGUARDANDO_APROVACAO";
+
                   return (
                     <tr key={o.id}>
                       <td>{o.osNumber}</td>
@@ -597,8 +738,14 @@ export function ServiceOrdersPage() {
                         <button
                           type="button"
                           onClick={() => openStatus(o)}
-                          disabled={rowBusy}
-                          title={rowBusy ? "Aguarde..." : "Clique para alterar o status"}
+                          disabled={rowBusy || o.status === "CANCELADA" || o.status === "ENTREGUE"}
+                          title={
+                            rowBusy
+                              ? "Aguarde..."
+                              : o.status === "CANCELADA" || o.status === "ENTREGUE"
+                              ? "Não é possível alterar o status."
+                              : "Clique para alterar o status"
+                          }
                           style={{
                             ...statusBadgeStyle(o.status),
                             cursor: rowBusy ? "not-allowed" : "pointer",
@@ -647,11 +794,38 @@ export function ServiceOrdersPage() {
 
                       <td>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <Button type="button" variant="secondary" onClick={() => openEdit(o)} disabled={rowBusy}>
-                            Editar
+                          <Button type="button" variant="secondary" onClick={() => openView(o)} disabled={rowBusy}>
+                            Visualizar
                           </Button>
-                          <Button type="button" variant="danger" onClick={() => openDelete(o)} disabled={rowBusy}>
-                            Excluir
+
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => (editIsBudget ? openBudget(o) : openEdit(o))}
+                            disabled={rowBusy || onlyView}
+                            title={
+                              onlyView
+                                ? "Neste status não é possível editar."
+                                : editIsBudget
+                                ? "Editar orçamento"
+                                : "Editar entrada"
+                            }
+                          >
+                            {editIsBudget ? "Orçamento" : "Editar"}
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="danger"
+                            onClick={() => openCancel(o)}
+                            disabled={rowBusy || !(allEnabled && (o.status === "ABERTA" || o.status === "EM_ANALISE" || o.status === "AGUARDANDO_APROVACAO"))}
+                            title={
+                              allEnabled
+                                ? "Cancelar OS"
+                                : "Este status não pode ser cancelado."
+                            }
+                          >
+                            Cancelar
                           </Button>
                         </div>
                       </td>
@@ -695,10 +869,8 @@ export function ServiceOrdersPage() {
                     setCpfQuery(v);
                     setCpfOpen(true);
 
-                    // enquanto digita, limpa seleção
                     clearClientSelection();
 
-                    // se colar um cpf/cnpj exato e existir, auto-seleciona
                     const q = normalizeCpfCnpj(v);
                     const exact = clients.find((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")) === q);
                     if (exact) applyClientSelection(exact);
@@ -820,32 +992,14 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
-            <Field label="Orçamento (R$)">
-              <input
-                value={form.budgetValue}
-                onChange={(e) => setForm((p) => ({ ...p, budgetValue: e.target.value }))}
-                placeholder="Ex.: 150"
-                disabled={modalSaving}
-              />
-            </Field>
-
-            <Field label="Valor final (R$)">
-              <input
-                value={form.finalValue}
-                onChange={(e) => setForm((p) => ({ ...p, finalValue: e.target.value }))}
-                placeholder="Ex.: 180"
-                disabled={modalSaving}
-              />
-            </Field>
           </FormGrid>
         </div>
       </Modal>
 
-      {/* EDIT */}
+      {/* EDIT (entrada) */}
       <Modal
-        title="Editar OS"
-        subtitle="Atualize os dados da OS (status é separado)."
+        title="Editar OS (Entrada)"
+        subtitle="Somente ABERTA e EM ANÁLISE podem editar a entrada."
         isOpen={isEditOpen}
         onClose={closeAllModals}
         disableClose={modalSaving}
@@ -955,27 +1109,11 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
-            <Field label="Orçamento (R$)">
-              <input
-                value={form.budgetValue}
-                onChange={(e) => setForm((p) => ({ ...p, budgetValue: e.target.value }))}
-                disabled={modalSaving}
-              />
-            </Field>
-
-            <Field label="Valor final (R$)">
-              <input
-                value={form.finalValue}
-                onChange={(e) => setForm((p) => ({ ...p, finalValue: e.target.value }))}
-                disabled={modalSaving}
-              />
-            </Field>
           </FormGrid>
         </div>
       </Modal>
 
-      {/* STATUS */}
+      {/* STATUS (somente próximos) */}
       <Modal
         title="Alterar status"
         subtitle={selected ? `OS #${selected.osNumber} — status atual: ${STATUS_LABEL[selected.status]}` : ""}
@@ -987,48 +1125,48 @@ export function ServiceOrdersPage() {
             <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
               Cancelar
             </Button>
-            <Button type="button" variant="primary" onClick={handleStatus} disabled={modalSaving}>
+            <Button type="button" variant="primary" onClick={handleStatus} disabled={modalSaving || statusOptions.length === 0}>
               {modalSaving ? "Salvando..." : "Confirmar"}
             </Button>
           </>
         }
       >
-        <FormGrid>
-          <Field label="Novo status *" full>
-            <select
-              value={nextStatus}
-              onChange={(e) => setNextStatus(e.target.value as ServiceOrderStatus)}
-              disabled={modalSaving}
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_LABEL[s]}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </FormGrid>
+        {statusOptions.length === 0 ? (
+          <Muted>Nenhuma transição de status disponível.</Muted>
+        ) : (
+          <FormGrid>
+            <Field label="Novo status *" full>
+              <select value={nextStatus} onChange={(e) => setNextStatus(e.target.value as ServiceOrderStatus)} disabled={modalSaving}>
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS_LABEL[s]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </FormGrid>
+        )}
       </Modal>
 
-      {/* DELETE */}
+      {/* CANCEL */}
       <Modal
-        title="Excluir OS"
-        subtitle={selected ? `Confirme a exclusão da OS #${selected.osNumber}.` : ""}
-        isOpen={isDeleteOpen}
+        title="Cancelar OS"
+        subtitle={selected ? `Confirme o cancelamento da OS #${selected.osNumber}.` : ""}
+        isOpen={isCancelOpen}
         onClose={closeAllModals}
         disableClose={modalSaving}
         footer={
           <>
             <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
-              Cancelar
+              Voltar
             </Button>
-            <Button type="button" variant="danger" onClick={handleDelete} disabled={modalSaving}>
-              {modalSaving ? "Excluindo..." : "Excluir"}
+            <Button type="button" variant="danger" onClick={handleCancel} disabled={modalSaving}>
+              {modalSaving ? "Cancelando..." : "Cancelar OS"}
             </Button>
           </>
         }
       >
-        <Muted>Essa ação não pode ser desfeita.</Muted>
+        <Muted>Essa ação muda o status para CANCELADA.</Muted>
       </Modal>
 
       {/* DETAILS */}
@@ -1047,8 +1185,7 @@ export function ServiceOrdersPage() {
         {selected ? (
           <div style={{ display: "grid", gap: 10 }}>
             <div>
-              <strong>Cliente:</strong> {selected.client?.name || "-"} • <strong>CPF/CNPJ:</strong>{" "}
-              {selected.clientCpfCnpj || "-"}
+              <strong>Cliente:</strong> {selected.client?.name || "-"} • <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
             </div>
             <div>
               <strong>Equipamento:</strong> {equipmentLabel(selected)}
@@ -1062,6 +1199,351 @@ export function ServiceOrdersPage() {
           </div>
         ) : (
           <Muted>Sem dados.</Muted>
+        )}
+      </Modal>
+
+      {/* BUDGET EDITOR */}
+      <Modal
+        title="Orçamento"
+        subtitle={selected ? `OS #${selected.osNumber} — ${STATUS_LABEL[selected.status]}` : ""}
+        isOpen={isBudgetOpen}
+        onClose={closeAllModals}
+        disableClose={modalSaving}
+        footer={
+          <>
+            <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
+              Cancelar
+            </Button>
+            <Button type="button" variant="primary" onClick={handleSaveBudget} disabled={modalSaving}>
+              {modalSaving ? "Salvando..." : "Salvar orçamento"}
+            </Button>
+          </>
+        }
+      >
+        {!selected ? (
+          <Muted>Sem dados.</Muted>
+        ) : (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>Serviços e valores</div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              {budgetForm.items.map((it) => (
+                <div
+                  key={it.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "2fr 1fr 90px 140px auto",
+                    gap: 8,
+                    alignItems: "center",
+                    borderBottom: "1px solid rgba(0,0,0,0.06)",
+                    paddingBottom: 10,
+                  }}
+                >
+                  <input
+                    value={it.description}
+                    onChange={(e) =>
+                      setBudgetForm((p) => ({
+                        ...p,
+                        items: p.items.map((x) => (x.id === it.id ? { ...x, description: e.target.value } : x)),
+                      }))
+                    }
+                    placeholder="Descrição do serviço"
+                    disabled={modalSaving}
+                  />
+                  <input
+                    value={it.technician}
+                    onChange={(e) =>
+                      setBudgetForm((p) => ({
+                        ...p,
+                        items: p.items.map((x) => (x.id === it.id ? { ...x, technician: e.target.value } : x)),
+                      }))
+                    }
+                    placeholder="Técnico"
+                    disabled={modalSaving}
+                  />
+                  <input
+                    value={it.qty}
+                    onChange={(e) =>
+                      setBudgetForm((p) => ({
+                        ...p,
+                        items: p.items.map((x) => (x.id === it.id ? { ...x, qty: e.target.value } : x)),
+                      }))
+                    }
+                    placeholder="Qtd"
+                    disabled={modalSaving}
+                  />
+                  <input
+                    value={it.unitValue}
+                    onChange={(e) =>
+                      setBudgetForm((p) => ({
+                        ...p,
+                        items: p.items.map((x) => (x.id === it.id ? { ...x, unitValue: e.target.value } : x)),
+                      }))
+                    }
+                    placeholder="Valor unit. (R$)"
+                    disabled={modalSaving}
+                  />
+                  <Button type="button" variant="danger" onClick={() => removeBudgetItem(it.id)} disabled={modalSaving}>
+                    Remover
+                  </Button>
+                </div>
+              ))}
+
+              <Button type="button" variant="secondary" onClick={addBudgetItem} disabled={modalSaving}>
+                + Adicionar serviço
+              </Button>
+
+              <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "8px 0" }} />
+
+              <FormGrid>
+                <Field label="Deslocamento (R$)">
+                  <input
+                    value={budgetForm.travelFee}
+                    onChange={(e) => setBudgetForm((p) => ({ ...p, travelFee: e.target.value }))}
+                    disabled={modalSaving}
+                  />
+                </Field>
+
+                <Field label="Serviço de terceiros (R$)">
+                  <input
+                    value={budgetForm.thirdPartyFee}
+                    onChange={(e) => setBudgetForm((p) => ({ ...p, thirdPartyFee: e.target.value }))}
+                    disabled={modalSaving}
+                  />
+                </Field>
+
+                <Field label="Desconto (R$)">
+                  <input
+                    value={budgetForm.discount}
+                    onChange={(e) => setBudgetForm((p) => ({ ...p, discount: e.target.value }))}
+                    disabled={modalSaving}
+                  />
+                </Field>
+
+                <Field label="Observações" full>
+                  <textarea
+                    value={budgetForm.note}
+                    onChange={(e) => setBudgetForm((p) => ({ ...p, note: e.target.value }))}
+                    rows={3}
+                    disabled={modalSaving}
+                  />
+                </Field>
+              </FormGrid>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* VIEW */}
+      <Modal
+        title="Visualizar"
+        subtitle={
+          selected
+            ? `OS #${selected.osNumber} • ${STATUS_LABEL[selected.status]} • Entrada: ${formatDateTimeBR(selected.entryDate || selected.createdAt)}`
+            : ""
+        }
+        isOpen={isViewOpen}
+        onClose={closeAllModals}
+        disableClose={modalSaving}
+        footer={
+          <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
+            Fechar
+          </Button>
+        }
+      >
+        {!selected ? (
+          <Muted>Sem dados.</Muted>
+        ) : viewMode === "ENTRY" ? (
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>Comprovante de Entrada</div>
+              <div>
+                <strong>Nº OS:</strong> {selected.osNumber} • <strong>Data de entrada:</strong>{" "}
+                {formatDateTimeBR(selected.entryDate || selected.createdAt)}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
+              <div>
+                <strong>Nome:</strong> {selected.client?.name || "-"}
+              </div>
+              <div>
+                <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
+              </div>
+              <div>
+                <strong>Telefone:</strong> {selected.client?.phone || "-"}
+              </div>
+              <div>
+                <strong>Email:</strong> {selected.client?.email || "-"}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Computador</div>
+              <div>
+                <strong>Equipamento:</strong> {equipmentLabel(selected)}
+              </div>
+              <div>
+                <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
+              </div>
+              <div>
+                <strong>Senha:</strong> {selected.equipmentPassword || "-"}
+              </div>
+              <div style={{ whiteSpace: "pre-wrap" }}>
+                <strong>Sintomas:</strong> {selected.symptoms || "-"}
+              </div>
+              <div>
+                <strong>Acessórios:</strong> {selected.accessories || "-"}
+              </div>
+              <div style={{ whiteSpace: "pre-wrap" }}>
+                <strong>Observações:</strong> {selected.observations || "-"}
+              </div>
+            </div>
+          </div>
+        ) : viewMode === "BUDGET" ? (
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ fontWeight: 800, fontSize: 16 }}>Orçamento da Ordem de Serviço</div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
+              <div>
+                <strong>Nome:</strong> {selected.client?.name || "-"}
+              </div>
+              <div>
+                <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
+              </div>
+              <div>
+                <strong>Telefone:</strong> {selected.client?.phone || "-"}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Computador</div>
+              <div>
+                <strong>Equipamento:</strong> {equipmentLabel(selected)}
+              </div>
+              <div>
+                <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
+              </div>
+              <div style={{ whiteSpace: "pre-wrap" }}>
+                <strong>Sintomas:</strong> {selected.symptoms || "-"}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontWeight: 800 }}>Valores do Orçamento</div>
+
+              {!selected.budget ? (
+                <Muted>Nenhum orçamento encontrado para esta OS.</Muted>
+              ) : (
+                <>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <div style={{ fontWeight: 700 }}>Serviços</div>
+
+                    {selected.budget.items?.length ? (
+                      <div style={{ display: "grid", gap: 6 }}>
+                        {selected.budget.items.map((it) => {
+                          const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
+                          return (
+                            <div
+                              key={it.id}
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr auto",
+                                gap: 10,
+                                borderBottom: "1px solid rgba(0,0,0,0.06)",
+                                paddingBottom: 6,
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontWeight: 700 }}>{it.description}</div>
+                                <div style={{ fontSize: 12, color: "#667085" }}>
+                                  Técnico: {it.technician || "-"} • Qtd: {it.qty}
+                                </div>
+                              </div>
+                              <div style={{ fontWeight: 800 }}>R$ {lineTotal.toFixed(2)}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <Muted>Nenhum serviço adicionado ainda.</Muted>
+                    )}
+                  </div>
+
+                  <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>Subtotal (serviços)</span>
+                      <strong>R$ {calcBudgetItemsTotal(selected.budget.items).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>Deslocamento</span>
+                      <strong>R$ {toMoneyNumber(selected.budget.travelFee).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>Serviço de terceiros</span>
+                      <strong>R$ {toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>Desconto</span>
+                      <strong>- R$ {toMoneyNumber(selected.budget.discount).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16 }}>
+                      <span style={{ fontWeight: 800 }}>Total</span>
+                      <span style={{ fontWeight: 900 }}>R$ {calcBudgetTotal(selected.budget).toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {selected.budget.note && (
+                    <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
+                      <strong>Observações do orçamento:</strong> {selected.budget.note}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ fontWeight: 800, fontSize: 16 }}>Comprovante de Pagamento</div>
+
+            <div>
+              <strong>Nº OS:</strong> {selected.osNumber} • <strong>Data de entrada:</strong>{" "}
+              {formatDateTimeBR(selected.entryDate || selected.createdAt)}
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
+              <div>
+                <strong>Nome:</strong> {selected.client?.name || "-"}
+              </div>
+              <div>
+                <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
+              </div>
+              <div>
+                <strong>Telefone:</strong> {selected.client?.phone || "-"}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Resumo</div>
+              <div>
+                <strong>Equipamento:</strong> {equipmentLabel(selected)}
+              </div>
+
+              <div>
+                <strong>Total (baseado no orçamento):</strong>{" "}
+                {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
+              </div>
+
+              <Muted>
+                Observação: ainda não existe módulo de “pagamento” no backend. Aqui estamos apenas exibindo um comprovante
+                com base no orçamento salvo.
+              </Muted>
+            </div>
+          </div>
         )}
       </Modal>
     </section>

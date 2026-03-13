@@ -1,20 +1,14 @@
-// frontend/src/components/Alert.tsx
-import { ReactNode } from "react";
+import React from "react";
 import styles from "./Alert.module.css";
 
-type Props = {
-  children: ReactNode;
-  className?: string;
-};
+type AlertBaseProps = React.HTMLAttributes<HTMLDivElement>;
 
-export function AlertError({ children, className = "" }: Props) {
-  return (
-    <div className={`${styles.error} ${className}`.trim()} role="alert">
-      {children}
-    </div>
-  );
+export function AlertError({ className = "", ...props }: AlertBaseProps) {
+  return <div className={`${styles.alertError} ${className}`.trim()} {...props} />;
 }
 
-export function Muted({ children, className = "" }: Props) {
-  return <div className={`${styles.muted} ${className}`.trim()}>{children}</div>;
+type MutedProps = React.HTMLAttributes<HTMLParagraphElement>;
+
+export function Muted({ className = "", ...props }: MutedProps) {
+  return <p className={`${styles.muted} ${className}`.trim()} {...props} />;
 }
