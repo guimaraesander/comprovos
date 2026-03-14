@@ -1168,7 +1168,7 @@ export function ServiceOrdersPage() {
         }
       >
         {cancelModalError ? <ModalError message={cancelModalError} /> : null}
-        <Muted>Essa ação muda o status para CANCELADA.</Muted>
+        <Muted>Você quer mesmo cancelar a OS #{selected?.osNumber}? </Muted>
       </Modal>
 
       {/* DETAILS */}

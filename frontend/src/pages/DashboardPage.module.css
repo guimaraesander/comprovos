@@ -1,0 +1,301 @@
+.grid {
+  display: grid;
+  gap: 14px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpiCard {
+  padding: 14px;
+}
+
+.kpiTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.kpiLabel {
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.kpiIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.kpiValue {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.4px;
+}
+
+.kpiHint {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.panel {
+  padding: 14px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panelTitle {
+  margin: 0;
+  font-size: 16px;
+}
+
+.panelSubtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.panelBadge {
+  font-weight: 900;
+  font-size: 12px;
+  color: #0f172a;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.statusBars {
+  display: grid;
+  gap: 10px;
+}
+
+.statusRow {
+  display: grid;
+  grid-template-columns: 160px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .statusRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.barWrap {
+  height: 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 999px;
+}
+
+.count {
+  text-align: right;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.twoCols {
+  display: grid;
+  grid-template-columns: 1.05fr 1.4fr;
+  gap: 12px;
+}
+
+@media (max-width: 1000px) {
+  .twoCols {
+    grid-template-columns: 1fr;
+  }
+}
+
+.shortcuts {
+  display: grid;
+  gap: 10px;
+}
+
+.shortcutCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.shortcutCard:hover {
+  transform: translateY(-1px);
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.06);
+}
+
+.shortcutIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.shortcutText {
+  display: grid;
+  gap: 2px;
+}
+
+.shortcutTitle {
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.shortcutSub {
+  margin: 0;
+  font-size: 13px;
+}
+
+.shortcutArrow {
+  margin-left: auto;
+  font-weight: 900;
+  color: #2563eb;
+}
+
+.tipBox {
+  margin-top: 12px;
+  border-radius: 14px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  padding: 12px;
+}
+
+.tipTitle {
+  font-weight: 900;
+  color: #1e3a8a;
+  margin-bottom: 4px;
+}
+
+.tipText {
+  margin: 0;
+  color: #1e40af;
+}
+
+.tableWrap {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.link {
+  font-weight: 900;
+  color: #2563eb;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+}
+
+.link:hover {
+  filter: brightness(0.98);
+}
+
+.oneLine {
+  margin: 4px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 52ch;
+}
+
+/* Chips (status) */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f2f4f7;
+  color: #344054;
+  white-space: nowrap;
+}
+
+.chipCancel {
+  background: #fee4e2;
+  color: #b42318;
+  border-color: #fecdca;
+}
+
+.chipDelivered {
+  background: #d1fadf;
+  color: #067647;
+  border-color: #a6f4c5;
+}
+
+.chipDone {
+  background: #e0eaff;
+  color: #175cd3;
+  border-color: #c7d7fe;
+}
+
+.chipMaintenance {
+  background: #fffaeb;
+  color: #b54708;
+  border-color: #fedf89;
+}
+
+.chipApproval {
+  background: #fef0c7;
+  color: #7a2e0e;
+  border-color: #fedf89;
+}
+
+.chipAnalysis {
+  background: #f0f9ff;
+  color: #026aa2;
+  border-color: #b9e6fe;
+}
+
+.chipOpen {
+  background: #f2f4f7;
+  color: #344054;
+  border-color: rgba(0, 0, 0, 0.08);
+}
