@@ -2,12 +2,14 @@ import express from "express";
 import cors from "cors";
 import { routes } from "./routes";
 import { errorHandler } from "./middlewares/error-handler";
+import { requestLogger } from "./middlewares/request-logger";
 import { setupSwagger } from "./config/swagger";
 
 export const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({

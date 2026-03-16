@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { ClientsController } from "./clients.controller";
 import { ensureAuth } from "../../middlewares/auth";
+import { ensureRole } from "../../middlewares/role";
 
 const clientsRouter = Router();
 const clientsController = new ClientsController();
@@ -67,6 +68,8 @@ clientsRouter.use(ensureAuth);
  *         description: Erro de validacao
  *       401:
  *         description: Nao autenticado
+ *       403:
+ *         description: Sem permissao
  *   get:
  *     tags: [Clients]
  *     summary: Lista clientes
@@ -77,14 +80,11 @@ clientsRouter.use(ensureAuth);
  *         description: Lista de clientes
  *       401:
  *         description: Nao autenticado
+ *       403:
+ *         description: Sem permissao
  */
-clientsRouter.post("/", (req, res, next) => {
-  void clientsController.create(req, res, next);
-});
-
-clientsRouter.get("/", (req, res, next) => {
-  void clientsController.list(req, res, next);
-});
+clientsRouter.post("/", ensureRole("ADMIN", "TECNICO"), clientsController.create.bind(clientsController));
+clientsRouter.get("/", ensureRole("ADMIN", "TECNICO"), clientsController.list.bind(clientsController));
 
 /**
  * @openapi
@@ -106,6 +106,8 @@ clientsRouter.get("/", (req, res, next) => {
  *         description: Cliente encontrado
  *       401:
  *         description: Nao autenticado
+ *       403:
+ *         description: Sem permissao
  *       404:
  *         description: Cliente nao encontrado
  *   put:
@@ -154,6 +156,8 @@ clientsRouter.get("/", (req, res, next) => {
  *         description: Erro de validacao
  *       401:
  *         description: Nao autenticado
+ *       403:
+ *         description: Sem permissao
  *       404:
  *         description: Cliente nao encontrado
  *   delete:
@@ -173,19 +177,13 @@ clientsRouter.get("/", (req, res, next) => {
  *         description: Cliente removido com sucesso
  *       401:
  *         description: Nao autenticado
+ *       403:
+ *         description: Sem permissao
  *       404:
  *         description: Cliente nao encontrado
  */
-clientsRouter.get("/:id", (req, res, next) => {
-  void clientsController.getById(req, res, next);
-});
-
-clientsRouter.put("/:id", (req, res, next) => {
-  void clientsController.update(req, res, next);
-});
-
-clientsRouter.delete("/:id", (req, res, next) => {
-  void clientsController.delete(req, res, next);
-});
+clientsRouter.get("/:id", ensureRole("ADMIN", "TECNICO"), clientsController.getById.bind(clientsController));
+clientsRouter.put("/:id", ensureRole("ADMIN", "TECNICO"), clientsController.update.bind(clientsController));
+clientsRouter.delete("/:id", ensureRole("ADMIN"), clientsController.delete.bind(clientsController));
 
 export { clientsRouter };

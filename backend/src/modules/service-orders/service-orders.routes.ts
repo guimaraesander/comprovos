@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { ensureAuth } from "../../middlewares/auth";
+import { ensureRole } from "../../middlewares/role";
 import { ServiceOrdersController } from "./service-orders.controller";
 import { BudgetsController } from "./budgets.controller";
 
@@ -49,6 +50,7 @@ serviceOrdersRoutes.use(ensureAuth);
  *       201: { description: OS criada com sucesso }
  *       400: { description: Erro de validação }
  *       401: { description: Não autenticado }
+ *       403: { description: Sem permissao }
  *       404: { description: Cliente não encontrado }
  *   get:
  *     tags: [Service Orders]
@@ -58,9 +60,10 @@ serviceOrdersRoutes.use(ensureAuth);
  *     responses:
  *       200: { description: Lista de OS }
  *       401: { description: Não autenticado }
+ *       403: { description: Sem permissao }
  */
-serviceOrdersRoutes.get("/", controller.list.bind(controller));
-serviceOrdersRoutes.post("/", controller.create.bind(controller));
+serviceOrdersRoutes.get("/", ensureRole("ADMIN", "TECNICO"), controller.list.bind(controller));
+serviceOrdersRoutes.post("/", ensureRole("ADMIN", "TECNICO"), controller.create.bind(controller));
 
 /**
  * @openapi
@@ -78,6 +81,7 @@ serviceOrdersRoutes.post("/", controller.create.bind(controller));
  *     responses:
  *       200: { description: OS encontrada }
  *       401: { description: Não autenticado }
+ *       403: { description: Sem permissao }
  *       404: { description: OS não encontrada }
  *   put:
  *     tags: [Service Orders]
@@ -112,6 +116,7 @@ serviceOrdersRoutes.post("/", controller.create.bind(controller));
  *       200: { description: OS atualizada }
  *       400: { description: Erro de validação }
  *       401: { description: Não autenticado }
+ *       403: { description: Sem permissao }
  *       404: { description: OS não encontrada }
  *   delete:
  *     tags: [Service Orders]
@@ -126,11 +131,12 @@ serviceOrdersRoutes.post("/", controller.create.bind(controller));
  *     responses:
  *       204: { description: OS removida com sucesso }
  *       401: { description: Não autenticado }
+ *       403: { description: Sem permissao }
  *       404: { description: OS não encontrada }
  */
-serviceOrdersRoutes.get("/:id", controller.getById.bind(controller));
-serviceOrdersRoutes.put("/:id", controller.update.bind(controller));
-serviceOrdersRoutes.delete("/:id", controller.delete.bind(controller));
+serviceOrdersRoutes.get("/:id", ensureRole("ADMIN", "TECNICO"), controller.getById.bind(controller));
+serviceOrdersRoutes.put("/:id", ensureRole("ADMIN", "TECNICO"), controller.update.bind(controller));
+serviceOrdersRoutes.delete("/:id", ensureRole("ADMIN"), controller.delete.bind(controller));
 
 /**
  * @openapi
@@ -155,14 +161,15 @@ serviceOrdersRoutes.delete("/:id", controller.delete.bind(controller));
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [ABERTA, EM_ANALISE, AGUARDANDO_APROVACACAO, AGUARDANDO_APROVACAO, EM_MANUTENCAO, FINALIZADA, ENTREGUE, CANCELADA]
+ *                 enum: [ABERTA, EM_ANALISE, AGUARDANDO_APROVACAO, EM_MANUTENCAO, FINALIZADA, ENTREGUE, CANCELADA]
  *     responses:
  *       200: { description: Status atualizado }
  *       400: { description: Erro de validação }
  *       401: { description: Não autenticado }
+ *       403: { description: Sem permissao }
  *       404: { description: OS não encontrada }
  */
-serviceOrdersRoutes.patch("/:id/status", controller.updateStatus.bind(controller));
+serviceOrdersRoutes.patch("/:id/status", ensureRole("ADMIN", "TECNICO"), controller.updateStatus.bind(controller));
 
 /**
  * @openapi
@@ -180,6 +187,7 @@ serviceOrdersRoutes.patch("/:id/status", controller.updateStatus.bind(controller
  *     responses:
  *       200: { description: Orçamento encontrado }
  *       401: { description: Não autenticado }
+ *       403: { description: Sem permissao }
  *       404: { description: Orçamento não encontrado }
  *   put:
  *     tags: [Service Orders]
@@ -216,7 +224,8 @@ serviceOrdersRoutes.patch("/:id/status", controller.updateStatus.bind(controller
  *       200: { description: Orçamento salvo }
  *       400: { description: Erro de validação }
  *       401: { description: Não autenticado }
+ *       403: { description: Sem permissao }
  *       404: { description: OS não encontrada }
  */
-serviceOrdersRoutes.get("/:id/budget", budgetsController.get.bind(budgetsController));
-serviceOrdersRoutes.put("/:id/budget", budgetsController.upsert.bind(budgetsController));
+serviceOrdersRoutes.get("/:id/budget", ensureRole("ADMIN", "TECNICO"), budgetsController.get.bind(budgetsController));
+serviceOrdersRoutes.put("/:id/budget", ensureRole("ADMIN", "TECNICO"), budgetsController.upsert.bind(budgetsController));

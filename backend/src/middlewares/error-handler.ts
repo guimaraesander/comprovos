@@ -1,40 +1,78 @@
-import { NextFunction, Request, Response } from "express";
-import { ZodError } from "zod";
-import { HttpError } from "../utils/http-error";
+import type { NextFunction, Request, Response } from "express";
 
-function isDev() {
-  return (process.env.NODE_ENV || "").toLowerCase() === "development";
+type HttpError = Error & {
+  statusCode?: number;
+  code?: string;
+  details?: unknown;
+};
+
+function getSafeStatusCode(error: HttpError) {
+  if (
+    typeof error.statusCode === "number" &&
+    Number.isInteger(error.statusCode) &&
+    error.statusCode >= 400 &&
+    error.statusCode <= 599
+  ) {
+    return error.statusCode;
+  }
+
+  return 500;
 }
 
-export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
-  // Log (em dev sempre; em prod apenas o necessário)
-  if (isDev()) {
-    // eslint-disable-next-line no-console
-    console.error({
-      method: req.method,
-      url: req.originalUrl,
-      err,
-    });
+function getErrorResponseMessage(statusCode: number, error: HttpError, isDev: boolean) {
+  if (statusCode >= 500 && !isDev) {
+    return "Erro interno do servidor.";
   }
 
-  // Zod -> 400
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      message: "Dados inválidos.",
-      issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-    });
+  return error.message || "Erro interno do servidor.";
+}
+
+export function errorHandler(
+  error: HttpError,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+) {
+  const statusCode = getSafeStatusCode(error);
+  const isDev = process.env.NODE_ENV !== "production";
+  const requestId =
+    typeof res.locals.requestId === "string" ? res.locals.requestId : null;
+
+  const logEntry = {
+    level: "error",
+    type: "http_error",
+    requestId,
+    method: req.method,
+    path: req.originalUrl,
+    statusCode,
+    message: error.message,
+    code: error.code ?? null,
+    details: error.details ?? null,
+    stack: isDev ? (error.stack ?? null) : null,
+    timestamp: new Date().toISOString(),
+  };
+
+  console.error(JSON.stringify(logEntry));
+
+  const responseBody: Record<string, unknown> = {
+    message: getErrorResponseMessage(statusCode, error, isDev),
+  };
+
+  if (requestId) {
+    responseBody.requestId = requestId;
   }
 
-  // HttpError -> status correto
-  if (err instanceof HttpError) {
-    return res.status(err.statusCode).json({
-      message: err.message,
-      ...(isDev() && err.details ? { details: err.details } : {}),
-    });
+  if (error.code) {
+    responseBody.code = error.code;
   }
 
-  // Fallback -> 500
-  return res.status(500).json({
-    message: "Erro interno do servidor.",
-  });
+  if (statusCode < 500 && typeof error.details !== "undefined") {
+    responseBody.details = error.details;
+  }
+
+  if (isDev && error.stack) {
+    responseBody.stack = error.stack;
+  }
+
+  return res.status(statusCode).json(responseBody);
 }
