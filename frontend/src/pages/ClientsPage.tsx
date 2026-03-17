@@ -106,7 +106,6 @@ function toCreatePayload(form: FormState): CreateClientInput {
 }
 
 function toUpdatePayload(form: FormState): UpdateClientInput {
-  
   const payload = toCreatePayload(form);
   return payload;
 }
@@ -116,11 +115,9 @@ export function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
-  // busca
   const [searchCpfCnpj, setSearchCpfCnpj] = useState("");
   const [appliedCpfCnpj, setAppliedCpfCnpj] = useState("");
 
-  // modais
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
 
@@ -159,9 +156,6 @@ export function ClientsPage() {
 
     if (!q) return sortedClients;
 
-    // Busca CPF/CNPJ:
-    // - se tiver 11/14 dígitos, busca EXATA
-    // - senão, mantém busca por "contém"
     const isExact = q.length === 11 || q.length === 14;
 
     return sortedClients.filter((c) => {
@@ -258,7 +252,6 @@ export function ClientsPage() {
       <Button type="button" variant="secondary" onClick={closeAllModals} disabled={saving}>
         Cancelar
       </Button>
-
       <Button type="submit" variant="primary" disabled={saving} form="client-form">
         {saving ? "Salvando..." : "Salvar"}
       </Button>
@@ -271,38 +264,36 @@ export function ClientsPage() {
         title="Clientes"
         subtitle="Cadastro e consulta de clientes."
         actions={
-          <>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <input
-                value={searchCpfCnpj}
-                onChange={(e) => setSearchCpfCnpj(normalizeCpfCnpjDigits(e.target.value))}
-                placeholder="Buscar por CPF/CNPJ…"
-                inputMode="numeric"
-                maxLength={14}
-                style={{
-                  height: 40,
-                  padding: "0 12px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(0,0,0,0.12)",
-                  outline: "none",
-                  minWidth: 240,
-                }}
-                disabled={loading}
-              />
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input
+              value={searchCpfCnpj}
+              onChange={(e) => setSearchCpfCnpj(normalizeCpfCnpjDigits(e.target.value))}
+              placeholder="Buscar por CPF/CNPJ…"
+              inputMode="numeric"
+              maxLength={14}
+              style={{
+                height: 40,
+                padding: "0 12px",
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.12)",
+                outline: "none",
+                minWidth: 240,
+              }}
+              disabled={loading}
+            />
 
-              <Button type="button" variant="secondary" onClick={applySearch} disabled={loading}>
-                Buscar
-              </Button>
+            <Button type="button" variant="secondary" onClick={applySearch} disabled={loading}>
+              Buscar
+            </Button>
 
-              <Button type="button" variant="secondary" onClick={clearSearch} disabled={loading}>
-                Limpar
-              </Button>
+            <Button type="button" variant="secondary" onClick={clearSearch} disabled={loading}>
+              Limpar
+            </Button>
 
-              <Button type="button" variant="primary" onClick={openCreate} disabled={loading}>
-                Novo cliente
-              </Button>
-            </div>
-          </>
+            <Button type="button" variant="primary" onClick={openCreate} disabled={loading}>
+              Novo cliente
+            </Button>
+          </div>
         }
       />
 
@@ -334,7 +325,7 @@ export function ClientsPage() {
                     <td>
                       <div style={{ fontWeight: 800 }}>{c.name}</div>
                       <Muted>
-                        {(c.city || c.district)
+                        {c.city || c.district
                           ? `${c.city || ""}${c.city && c.district ? " • " : ""}${c.district || ""}`
                           : "-"}
                       </Muted>
@@ -352,6 +343,7 @@ export function ClientsPage() {
                         <Button type="button" variant="secondary" onClick={() => openView(c)}>
                           Visualizar
                         </Button>
+
                         <Button type="button" variant="secondary" onClick={() => openEdit(c)}>
                           Editar
                         </Button>
@@ -365,7 +357,6 @@ export function ClientsPage() {
         </Card>
       )}
 
-      {/* MODAL CREATE/EDIT */}
       <Modal
         title={mode === "CREATE" ? "Novo cliente" : "Editar cliente"}
         subtitle={
@@ -495,7 +486,6 @@ export function ClientsPage() {
         </form>
       </Modal>
 
-      {/* MODAL VIEW */}
       <Modal
         title="Visualizar cliente"
         subtitle={selected ? `ID: ${selected.id} • Cadastrado em: ${formatDateTimeBR(selected.createdAt)}` : ""}

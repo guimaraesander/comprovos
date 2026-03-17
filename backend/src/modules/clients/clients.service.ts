@@ -9,7 +9,6 @@ function normalizeEmail(email?: string | null) {
 
 export class ClientsService {
   async create(data: CreateClientInput) {
-    // cpfCnpj e phone já chegam normalizados pelo Zod (só dígitos)
     try {
       return await prisma.client.create({
         data: {
@@ -18,7 +17,6 @@ export class ClientsService {
         },
       });
     } catch (err: any) {
-      // unique violation (cpfCnpj)
       if (err?.code === "P2002") {
         throw HttpError.conflict("Já existe um cliente com esse CPF/CNPJ.");
       }
@@ -33,8 +31,14 @@ export class ClientsService {
   }
 
   async getById(id: string) {
-    const client = await prisma.client.findUnique({ where: { id } });
-    if (!client) throw HttpError.notFound("Cliente não encontrado.");
+    const client = await prisma.client.findUnique({
+      where: { id },
+    });
+
+    if (!client) {
+      throw HttpError.notFound("Cliente não encontrado.");
+    }
+
     return client;
   }
 
@@ -59,6 +63,19 @@ export class ClientsService {
 
   async delete(id: string) {
     await this.getById(id);
-    await prisma.client.delete({ where: { id } });
+
+    const linkedServiceOrdersCount = await prisma.serviceOrder.count({
+      where: { clientId: id },
+    });
+
+    if (linkedServiceOrdersCount > 0) {
+      throw HttpError.conflict(
+        "Cliente possui ordens de serviço vinculadas e não pode ser excluído."
+      );
+    }
+
+    await prisma.client.delete({
+      where: { id },
+    });
   }
 }
