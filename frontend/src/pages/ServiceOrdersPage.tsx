@@ -76,6 +76,21 @@ const STATUS_FLOW: ServiceOrderStatus[] = [
   "CANCELADA", // cancelamento é um “fim”
 ];
 
+
+type ServiceOrderWithCreator = ServiceOrder & {
+  createdByUser?: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+  } | null;
+};
+
+function orderResponsibleName(order: ServiceOrder | null | undefined) {
+  const creator = (order as ServiceOrderWithCreator | null | undefined)?.createdByUser;
+  return creator?.name || "-";
+}
+
 type FormState = {
   clientId: string;
   clientCpfCnpj: string;
@@ -1386,6 +1401,13 @@ export function ServiceOrdersPage() {
             </div>
 
             <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+              <div>
+                <strong>Nome:</strong> {orderResponsibleName(selected)}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontWeight: 800 }}>Dados do Computador</div>
               <div>
                 <strong>Equipamento:</strong> {equipmentLabel(selected)}
@@ -1421,6 +1443,13 @@ export function ServiceOrdersPage() {
               </div>
               <div>
                 <strong>Telefone:</strong> {selected.client?.phone || "-"}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+              <div>
+                <strong>Nome:</strong> {orderResponsibleName(selected)}
               </div>
             </div>
 
@@ -1530,6 +1559,13 @@ export function ServiceOrdersPage() {
               </div>
               <div>
                 <strong>Telefone:</strong> {selected.client?.phone || "-"}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+              <div>
+                <strong>Nome:</strong> {orderResponsibleName(selected)}
               </div>
             </div>
 
