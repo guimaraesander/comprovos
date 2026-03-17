@@ -18,8 +18,25 @@ function isForwardNext(current: string, next: string) {
   const ci = indexInFlow(current);
   const ni = indexInFlow(next);
   if (ci < 0 || ni < 0) return false;
-  return ni === ci + 1; // só permite avançar 1 etapa por vez
+  return ni === ci + 1;
 }
+
+const serviceOrderInclude = {
+  client: true,
+  createdByUser: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+    },
+  },
+  budget: {
+    include: {
+      items: true,
+    },
+  },
+} as const;
 
 export class ServiceOrdersService {
   private budgets = new BudgetsService();
@@ -29,7 +46,10 @@ export class ServiceOrdersService {
       where: { id: input.clientId },
       select: { id: true },
     });
-    if (!client) throw HttpError.notFound("Cliente não encontrado.");
+
+    if (!client) {
+      throw HttpError.notFound("Cliente não encontrado.");
+    }
 
     return prisma.serviceOrder.create({
       data: {
@@ -51,33 +71,27 @@ export class ServiceOrdersService {
         budgetValue: input.budgetValue ?? null,
         finalValue: input.finalValue ?? null,
       },
-      include: {
-        client: true,
-        budget: { include: { items: true } },
-      },
+      include: serviceOrderInclude,
     });
   }
 
   async list() {
     return prisma.serviceOrder.findMany({
       orderBy: { createdAt: "desc" },
-      include: {
-        client: true,
-        budget: { include: { items: true } },
-      },
+      include: serviceOrderInclude,
     });
   }
 
   async getById(id: string) {
     const order = await prisma.serviceOrder.findUnique({
       where: { id },
-      include: {
-        client: true,
-        budget: { include: { items: true } },
-      },
+      include: serviceOrderInclude,
     });
 
-    if (!order) throw HttpError.notFound("Ordem de serviço não encontrada.");
+    if (!order) {
+      throw HttpError.notFound("Ordem de serviço não encontrada.");
+    }
+
     return order;
   }
 
@@ -89,7 +103,10 @@ export class ServiceOrdersService {
         where: { id: input.clientId },
         select: { id: true },
       });
-      if (!client) throw HttpError.notFound("Cliente não encontrado.");
+
+      if (!client) {
+        throw HttpError.notFound("Cliente não encontrado.");
+      }
     }
 
     return prisma.serviceOrder.update({
@@ -111,10 +128,7 @@ export class ServiceOrdersService {
         ...(input.budgetValue !== undefined ? { budgetValue: input.budgetValue ?? null } : {}),
         ...(input.finalValue !== undefined ? { finalValue: input.finalValue ?? null } : {}),
       },
-      include: {
-        client: true,
-        budget: { include: { items: true } },
-      },
+      include: serviceOrderInclude,
     });
   }
 
@@ -123,25 +137,32 @@ export class ServiceOrdersService {
       where: { id },
       select: { id: true, status: true },
     });
-    if (!order) throw HttpError.notFound("Ordem de serviço não encontrada.");
+
+    if (!order) {
+      throw HttpError.notFound("Ordem de serviço não encontrada.");
+    }
 
     const current = order.status as string;
     const next = input.status as string;
 
-    // terminal
     if (current === "CANCELADA") {
       throw HttpError.badRequest("OS cancelada não pode ter status alterado.");
     }
+
     if (current === "ENTREGUE") {
       throw HttpError.badRequest("OS entregue não pode ter status alterado.");
     }
 
-    // cancelamento só permitido até AGUARDANDO_APROVACAO
     if (next === "CANCELADA") {
-      const cancelAllowed = current === "ABERTA" || current === "EM_ANALISE" || current === "AGUARDANDO_APROVACAO";
-      if (!cancelAllowed) throw HttpError.badRequest("Este status não pode ser cancelado.");
+      const cancelAllowed =
+        current === "ABERTA" ||
+        current === "EM_ANALISE" ||
+        current === "AGUARDANDO_APROVACAO";
+
+      if (!cancelAllowed) {
+        throw HttpError.badRequest("Este status não pode ser cancelado.");
+      }
     } else {
-      // fluxo normal: só avança 1 etapa por vez
       if (!isForwardNext(current, next)) {
         throw HttpError.badRequest("Transição de status inválida. Não é permitido voltar ou pular etapas.");
       }
@@ -150,15 +171,15 @@ export class ServiceOrdersService {
     const updated = await prisma.serviceOrder.update({
       where: { id },
       data: { status: input.status },
-      include: { client: true, budget: { include: { items: true } } },
+      include: serviceOrderInclude,
     });
 
-    // ao entrar em AGUARDANDO_APROVACAO, garante orçamento criado
     if (input.status === "AGUARDANDO_APROVACAO") {
       await this.budgets.ensureExists(id);
+
       return prisma.serviceOrder.findUnique({
         where: { id },
-        include: { client: true, budget: { include: { items: true } } },
+        include: serviceOrderInclude,
       });
     }
 
