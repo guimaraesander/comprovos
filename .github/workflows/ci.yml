@@ -2,18 +2,20 @@ name: CI ComprovOS
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - main-teste
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - main-teste
 
 jobs:
   backend:
-    name: Backend - Install and Build
+    name: Backend - Install, Build and Test
     runs-on: ubuntu-latest
 
     env:
-      # Variáveis necessárias para o build do backend / Prisma Client no CI
-      # Não precisa conectar em banco real para prisma generate + tsc
       DATABASE_URL: postgresql://ci:ci@localhost:5432/comprovos_ci
       JWT_SECRET: ci-jwt-secret
       NODE_ENV: test
@@ -40,11 +42,14 @@ jobs:
       - name: Gerar Prisma Client
         run: npm run prisma:generate
 
+      - name: Rodar testes do backend
+        run: npm run test:run
+
       - name: Build backend
         run: npm run build
 
   frontend:
-    name: Frontend - Install and Build
+    name: Frontend - Install, Build and Test
     runs-on: ubuntu-latest
 
     defaults:
@@ -64,6 +69,9 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci
+
+      - name: Rodar testes do frontend
+        run: npm run test:run
 
       - name: Build frontend
         run: npm run build
