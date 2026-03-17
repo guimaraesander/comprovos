@@ -1385,6 +1385,13 @@ export function ServiceOrdersPage() {
             </div>
 
             <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+              <div>
+                <strong>Nome:</strong> {orderResponsibleName(selected)}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
               <div>
                 <strong>Nome:</strong> {selected.client?.name || "-"}
@@ -1397,13 +1404,6 @@ export function ServiceOrdersPage() {
               </div>
               <div>
                 <strong>Email:</strong> {selected.client?.email || "-"}
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
-              <div>
-                <strong>Nome:</strong> {orderResponsibleName(selected)}
               </div>
             </div>
 
@@ -1434,6 +1434,13 @@ export function ServiceOrdersPage() {
             <div style={{ fontWeight: 800, fontSize: 16 }}>Orçamento da Ordem de Serviço</div>
 
             <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+              <div>
+                <strong>Nome:</strong> {orderResponsibleName(selected)}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
               <div>
                 <strong>Nome:</strong> {selected.client?.name || "-"}
@@ -1443,13 +1450,6 @@ export function ServiceOrdersPage() {
               </div>
               <div>
                 <strong>Telefone:</strong> {selected.client?.phone || "-"}
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
-              <div>
-                <strong>Nome:</strong> {orderResponsibleName(selected)}
               </div>
             </div>
 
@@ -1550,6 +1550,13 @@ export function ServiceOrdersPage() {
             </div>
 
             <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+              <div>
+                <strong>Nome:</strong> {orderResponsibleName(selected)}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
               <div>
                 <strong>Nome:</strong> {selected.client?.name || "-"}
@@ -1559,13 +1566,6 @@ export function ServiceOrdersPage() {
               </div>
               <div>
                 <strong>Telefone:</strong> {selected.client?.phone || "-"}
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
-              <div>
-                <strong>Nome:</strong> {orderResponsibleName(selected)}
               </div>
             </div>
 
