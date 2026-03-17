@@ -6,15 +6,14 @@ import { LoginPage } from "../pages/LoginPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { ClientsPage } from "../pages/ClientsPage";
 import { ServiceOrdersPage } from "../pages/ServiceOrdersPage";
+import { UsersPage } from "../pages/UsersPage";
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Pública */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Protegidas */}
         <Route
           element={
             <ProtectedRoute>
@@ -25,9 +24,9 @@ export function AppRouter() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/service-orders" element={<ServiceOrdersPage />} />
+          <Route path="/users" element={<UsersPage />} />
         </Route>
 
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

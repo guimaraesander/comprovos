@@ -4,6 +4,8 @@ import { useAuth } from "../context/AuthContext";
 export function AppLayout() {
   const { user, logout } = useAuth();
 
+  const isAdmin = user?.role === "ADMIN";
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -18,6 +20,7 @@ export function AppLayout() {
           </NavLink>
           <NavLink to="/clients">Clientes</NavLink>
           <NavLink to="/service-orders">Ordens de Serviço</NavLink>
+          {isAdmin && <NavLink to="/users">Usuários</NavLink>}
         </nav>
 
         <div className="sidebar-user">
