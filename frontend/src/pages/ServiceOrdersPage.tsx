@@ -21,6 +21,7 @@ import {
   type ServiceOrderBudget,
   type ServiceOrderBudgetItem,
   type UpsertBudgetInput,
+  type PaymentType,
 } from "../services/serviceOrders";
 
 import styles from "./ServiceOrdersPage.module.css";
@@ -65,6 +66,22 @@ const STATUS_LABEL: Record<ServiceOrderStatus, string> = {
   CANCELADA: "CANCELADA",
 };
 
+const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
+  PIX: "PIX",
+  DINHEIRO: "Dinheiro",
+  CARTAO_CREDITO: "Cartão de crédito",
+  CARTAO_DEBITO: "Cartão de débito",
+  TRANSFERENCIA: "Transferência",
+  BOLETO: "Boleto",
+  OUTRO: "Outro",
+};
+
+const WARRANTY_TEXT = [
+  "A garantia começa a contar a partir da retirada do equipamento ou 30 dias após o aviso de retirada, mesmo o equipamento permanecendo na loja.",
+  "Todo equipamento sairá lacrado com nosso lacre de garantia; a remoção do mesmo implica em perda da garantia.",
+  "A garantia não cobre danos causados pelo usuário, como quedas, trincos na tela, derramamento de líquido ou vírus.",
+] as const;
+
 // fluxo “pra frente” (não pode voltar)
 const STATUS_FLOW: ServiceOrderStatus[] = [
   "ABERTA",
@@ -73,23 +90,8 @@ const STATUS_FLOW: ServiceOrderStatus[] = [
   "EM_MANUTENCAO",
   "FINALIZADA",
   "ENTREGUE",
-  "CANCELADA", // cancelamento é um “fim”
+  "CANCELADA",
 ];
-
-
-type ServiceOrderWithCreator = ServiceOrder & {
-  createdByUser?: {
-    id?: string;
-    name?: string | null;
-    email?: string | null;
-    role?: string | null;
-  } | null;
-};
-
-function orderResponsibleName(order: ServiceOrder | null | undefined) {
-  const creator = (order as ServiceOrderWithCreator | null | undefined)?.createdByUser;
-  return creator?.name || "-";
-}
 
 type FormState = {
   clientId: string;
@@ -109,6 +111,9 @@ type FormState = {
   symptoms: string;
   accessories: string;
   observations: string;
+  paymentType: PaymentType | "";
+  paymentDate: string;
+  pickupDate: string;
 };
 
 const initialForm: FormState = {
@@ -129,6 +134,9 @@ const initialForm: FormState = {
   symptoms: "",
   accessories: "",
   observations: "",
+  paymentType: "",
+  paymentDate: "",
+  pickupDate: "",
 };
 
 type BudgetFormItem = {
@@ -172,6 +180,7 @@ function formatClientAddress(c: Client) {
     (c as any).state,
     (c as any).zipCode,
   ].filter((x) => typeof x === "string" && x.trim().length > 0);
+
   return parts.join(" • ");
 }
 
@@ -201,9 +210,11 @@ function statusBadgeStyle(status: ServiceOrderStatus): React.CSSProperties {
   if (status === "ENTREGUE") return { ...base, background: "#d1fadf", color: "#067647", borderColor: "#a6f4c5" };
   if (status === "FINALIZADA") return { ...base, background: "#e0eaff", color: "#175cd3", borderColor: "#c7d7fe" };
   if (status === "EM_MANUTENCAO") return { ...base, background: "#fffaeb", color: "#b54708", borderColor: "#fedf89" };
-  if (status === "AGUARDANDO_APROVACAO")
+  if (status === "AGUARDANDO_APROVACAO") {
     return { ...base, background: "#fef0c7", color: "#7a2e0e", borderColor: "#fedf89" };
+  }
   if (status === "EM_ANALISE") return { ...base, background: "#f0f9ff", color: "#026aa2", borderColor: "#b9e6fe" };
+
   return base;
 }
 
@@ -216,17 +227,44 @@ function formatDateTimeBR(iso?: string) {
   if (!iso) return "-";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
+
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = d.getFullYear();
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
+
   return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+}
+
+function formatDateInput(value?: string | null) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatDateOnlyBR(value?: string | null) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "-";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function responsibleName(order: ServiceOrder | null | undefined) {
+  return order?.createdByUser?.name?.trim() || "-";
 }
 
 function toMoneyNumber(v: number | string | null | undefined) {
   if (v === null || v === undefined) return 0;
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
@@ -238,22 +276,28 @@ function calcBudgetItemsTotal(items: ServiceOrderBudgetItem[] | undefined) {
 
 function calcBudgetTotal(budget: ServiceOrderBudget | null | undefined) {
   if (!budget) return 0;
+
   const itemsTotal = calcBudgetItemsTotal(budget.items);
   const travel = toMoneyNumber(budget.travelFee);
   const third = toMoneyNumber(budget.thirdPartyFee);
   const discount = toMoneyNumber(budget.discount);
+
   return itemsTotal + travel + third - discount;
 }
 
-// regras de botões
 function buttonsMode(status: ServiceOrderStatus) {
   const allEnabled = status === "ABERTA" || status === "EM_ANALISE" || status === "AGUARDANDO_APROVACAO";
-  const onlyView = status === "EM_MANUTENCAO" || status === "FINALIZADA" || status === "ENTREGUE" || status === "CANCELADA";
+  const onlyView =
+    status === "EM_MANUTENCAO" ||
+    status === "FINALIZADA" ||
+    status === "ENTREGUE" ||
+    status === "CANCELADA";
+
   return { allEnabled, onlyView };
 }
 
-// visualização por status
 type ViewMode = "ENTRY" | "BUDGET" | "PAYMENT";
+
 function getViewMode(status: ServiceOrderStatus): ViewMode {
   if (status === "ENTREGUE") return "PAYMENT";
   if (status === "AGUARDANDO_APROVACAO" || status === "EM_MANUTENCAO" || status === "FINALIZADA") return "BUDGET";
@@ -262,18 +306,25 @@ function getViewMode(status: ServiceOrderStatus): ViewMode {
 
 function nextStatusesAllowed(current: ServiceOrderStatus): ServiceOrderStatus[] {
   if (current === "CANCELADA" || current === "ENTREGUE") return [];
+
   const idx = STATUS_FLOW.indexOf(current);
   if (idx < 0) return [];
+
   const next = STATUS_FLOW[idx + 1];
   const out: ServiceOrderStatus[] = [];
+
   if (next && next !== "CANCELADA") out.push(next);
-  if (current === "ABERTA" || current === "EM_ANALISE" || current === "AGUARDANDO_APROVACAO") out.push("CANCELADA");
+  if (current === "ABERTA" || current === "EM_ANALISE" || current === "AGUARDANDO_APROVACAO") {
+    out.push("CANCELADA");
+  }
+
   return out;
 }
 
 function parseMoneyInput(v: string) {
   const t = v.trim();
   if (!t) return 0;
+
   const n = Number(t.replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
@@ -288,10 +339,7 @@ export function ServiceOrdersPage() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  // erro “da página” (somente listagem / load / refresh)
   const [pageError, setPageError] = useState<string | null>(null);
-
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -300,10 +348,9 @@ export function ServiceOrdersPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
-
   const [isBudgetOpen, setIsBudgetOpen] = useState(false);
-  const [budgetForm, setBudgetForm] = useState<BudgetForm>(initialBudgetForm);
 
+  const [budgetForm, setBudgetForm] = useState<BudgetForm>(initialBudgetForm);
   const [modalSaving, setModalSaving] = useState(false);
 
   const [selected, setSelected] = useState<ServiceOrder | null>(null);
@@ -311,14 +358,12 @@ export function ServiceOrdersPage() {
   const [nextStatus, setNextStatus] = useState<ServiceOrderStatus>("EM_ANALISE");
   const [statusOptions, setStatusOptions] = useState<ServiceOrderStatus[]>([]);
 
-  // ERROS DENTRO DOS MODAIS
   const [createModalError, setCreateModalError] = useState<string | null>(null);
   const [editModalError, setEditModalError] = useState<string | null>(null);
   const [statusModalError, setStatusModalError] = useState<string | null>(null);
   const [cancelModalError, setCancelModalError] = useState<string | null>(null);
   const [budgetModalError, setBudgetModalError] = useState<string | null>(null);
 
-  // dropdown CPF
   const [cpfQuery, setCpfQuery] = useState("");
   const [cpfOpen, setCpfOpen] = useState(false);
   const cpfBoxRef = useRef<HTMLDivElement | null>(null);
@@ -334,7 +379,10 @@ export function ServiceOrdersPage() {
   const cpfMatches = useMemo(() => {
     const q = normalizeCpfCnpj(cpfQuery);
     if (!q) return [];
-    return clients.filter((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")).startsWith(q)).slice(0, 8);
+
+    return clients
+      .filter((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")).startsWith(q))
+      .slice(0, 8);
   }, [cpfQuery, clients]);
 
   function setBusy(id: string, value: boolean) {
@@ -349,6 +397,7 @@ export function ServiceOrdersPage() {
   async function loadAll() {
     setPageError(null);
     setLoading(true);
+
     try {
       const [ordersData, clientsData] = await Promise.all([listServiceOrders(), listClients()]);
       setOrders(Array.isArray(ordersData) ? ordersData : []);
@@ -363,6 +412,7 @@ export function ServiceOrdersPage() {
   async function refresh() {
     setPageError(null);
     setRefreshing(true);
+
     try {
       const [ordersData, clientsData] = await Promise.all([listServiceOrders(), listClients()]);
       setOrders(Array.isArray(ordersData) ? ordersData : []);
@@ -384,6 +434,7 @@ export function ServiceOrdersPage() {
       if (!el) return;
       if (e.target instanceof Node && !el.contains(e.target)) setCpfOpen(false);
     }
+
     document.addEventListener("mousedown", onDocDown);
     return () => document.removeEventListener("mousedown", onDocDown);
   }, []);
@@ -393,7 +444,6 @@ export function ServiceOrdersPage() {
     setForm(initialForm);
     setCpfQuery("");
     setCpfOpen(false);
-
     setCreateModalError(null);
     setIsCreateOpen(true);
   }
@@ -410,7 +460,6 @@ export function ServiceOrdersPage() {
     setIsBudgetOpen(false);
     setCpfOpen(false);
 
-    
     setCreateModalError(null);
     setEditModalError(null);
     setStatusModalError(null);
@@ -420,11 +469,11 @@ export function ServiceOrdersPage() {
 
   function applyClientSelection(c: Client) {
     const cpf = String((c as any).cpfCnpj || "");
+
     setForm((p) => ({
       ...p,
       clientId: c.id,
       clientCpfCnpj: cpf,
-
       clientName: c.name || "",
       clientPhone: String((c as any).phone || ""),
       clientEmail: String((c as any).email || ""),
@@ -452,7 +501,6 @@ export function ServiceOrdersPage() {
 
     const clientId = normalizeText(form.clientId);
     const clientCpfCnpj = normalizeText(form.clientCpfCnpj);
-
     const equipmentType = normalizeText(form.equipmentType);
     const symptoms = normalizeText(form.symptoms);
 
@@ -463,20 +511,22 @@ export function ServiceOrdersPage() {
     if (!symptoms) return setCreateModalError("Informe os sintomas.");
 
     setModalSaving(true);
+
     try {
       const created = await createServiceOrder({
         clientId,
         clientCpfCnpj,
-
         equipmentType,
         equipmentBrand: normalizeText(form.equipmentBrand) || undefined,
         equipmentModel: normalizeText(form.equipmentModel) || undefined,
         equipmentSerialNumber: normalizeText(form.equipmentSerialNumber) || undefined,
         equipmentPassword: normalizeText(form.equipmentPassword) || undefined,
-
         symptoms,
         accessories: normalizeText(form.accessories) || undefined,
         observations: normalizeText(form.observations) || undefined,
+        paymentType: form.paymentType || undefined,
+        paymentDate: form.paymentDate || undefined,
+        pickupDate: form.pickupDate || undefined,
       });
 
       setOrders((prev) => [created, ...prev]);
@@ -497,26 +547,25 @@ export function ServiceOrdersPage() {
     setForm({
       clientId: order.clientId,
       clientCpfCnpj: order.clientCpfCnpj || "",
-
       clientName: c?.name || "",
       clientPhone: String((c as any)?.phone || ""),
       clientEmail: String((c as any)?.email || ""),
       clientAddress: c ? formatClientAddress(c as any) : "",
-
       equipmentType: order.equipmentType || "",
       equipmentBrand: order.equipmentBrand ?? "",
       equipmentModel: order.equipmentModel ?? "",
       equipmentSerialNumber: order.equipmentSerialNumber ?? "",
       equipmentPassword: order.equipmentPassword ?? "",
-
       symptoms: order.symptoms || "",
       accessories: order.accessories ?? "",
       observations: order.observations ?? "",
+      paymentType: order.paymentType ?? "",
+      paymentDate: formatDateInput(order.paymentDate),
+      pickupDate: formatDateInput(order.pickupDate),
     });
 
     setCpfQuery(order.clientCpfCnpj || "");
     setCpfOpen(false);
-
     setIsEditOpen(true);
   }
 
@@ -527,7 +576,6 @@ export function ServiceOrdersPage() {
 
     const clientId = normalizeText(form.clientId);
     const clientCpfCnpj = normalizeText(form.clientCpfCnpj);
-
     const equipmentType = normalizeText(form.equipmentType);
     const symptoms = normalizeText(form.symptoms);
 
@@ -543,16 +591,17 @@ export function ServiceOrdersPage() {
       const updated = await updateServiceOrder(selected.id, {
         clientId,
         clientCpfCnpj,
-
         equipmentType,
         equipmentBrand: normalizeText(form.equipmentBrand) || null,
         equipmentModel: normalizeText(form.equipmentModel) || null,
         equipmentSerialNumber: normalizeText(form.equipmentSerialNumber) || null,
         equipmentPassword: normalizeText(form.equipmentPassword) || null,
-
         symptoms,
         accessories: normalizeText(form.accessories) || null,
         observations: normalizeText(form.observations) || null,
+        paymentType: form.paymentType || null,
+        paymentDate: form.paymentDate || null,
+        pickupDate: form.pickupDate || null,
       });
 
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
@@ -572,7 +621,6 @@ export function ServiceOrdersPage() {
     const opts = nextStatusesAllowed(order.status);
     setStatusOptions(opts);
     setNextStatus(opts[0] ?? order.status);
-
     setIsStatusOpen(true);
   }
 
@@ -580,7 +628,6 @@ export function ServiceOrdersPage() {
     if (!selected) return;
 
     setStatusModalError(null);
-
     setModalSaving(true);
     setBusy(selected.id, true);
 
@@ -616,7 +663,6 @@ export function ServiceOrdersPage() {
     if (!selected) return;
 
     setCancelModalError(null);
-
     setModalSaving(true);
     setBusy(selected.id, true);
 
@@ -637,6 +683,7 @@ export function ServiceOrdersPage() {
     setBudgetModalError(null);
 
     const b = order.budget;
+
     setBudgetForm({
       travelFee: String(toMoneyNumber(b?.travelFee ?? 0)),
       thirdPartyFee: String(toMoneyNumber(b?.thirdPartyFee ?? 0)),
@@ -657,10 +704,7 @@ export function ServiceOrdersPage() {
   function addBudgetItem() {
     setBudgetForm((p) => ({
       ...p,
-      items: [
-        ...p.items,
-        { id: newLocalId(), description: "", technician: "", qty: "1", unitValue: "0" },
-      ],
+      items: [...p.items, { id: newLocalId(), description: "", technician: "", qty: "1", unitValue: "0" }],
     }));
   }
 
@@ -672,7 +716,6 @@ export function ServiceOrdersPage() {
     if (!selected) return;
 
     setBudgetModalError(null);
-
     setModalSaving(true);
     setBusy(selected.id, true);
 
@@ -752,7 +795,6 @@ export function ServiceOrdersPage() {
                 sortedOrders.map((o) => {
                   const client = o.client ?? clientsById.get(o.clientId) ?? null;
                   const { short, truncated } = truncateOneLine(o.symptoms, 70);
-
                   const rowBusy = !!busyById[o.id];
                   const { allEnabled, onlyView } = buttonsMode(o.status);
                   const editIsBudget = o.status === "AGUARDANDO_APROVACAO";
@@ -833,7 +875,10 @@ export function ServiceOrdersPage() {
                             type="button"
                             variant="danger"
                             onClick={() => openCancel(o)}
-                            disabled={rowBusy || !(allEnabled && (o.status === "ABERTA" || o.status === "EM_ANALISE" || o.status === "AGUARDANDO_APROVACAO"))}
+                            disabled={
+                              rowBusy ||
+                              !(allEnabled && (o.status === "ABERTA" || o.status === "EM_ANALISE" || o.status === "AGUARDANDO_APROVACAO"))
+                            }
                             title={allEnabled ? "Cancelar OS" : "Este status não pode ser cancelado."}
                           >
                             Cancelar
@@ -1005,6 +1050,41 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
+
+            <Field label="Tipo de pagamento">
+              <select
+                value={form.paymentType}
+                onChange={(e) => setForm((p) => ({ ...p, paymentType: e.target.value as PaymentType | "" }))}
+                disabled={modalSaving}
+              >
+                <option value="">Selecione</option>
+                <option value="PIX">PIX</option>
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="CARTAO_CREDITO">Cartão de crédito</option>
+                <option value="CARTAO_DEBITO">Cartão de débito</option>
+                <option value="TRANSFERENCIA">Transferência</option>
+                <option value="BOLETO">Boleto</option>
+                <option value="OUTRO">Outro</option>
+              </select>
+            </Field>
+
+            <Field label="Data do pagamento">
+              <input
+                type="date"
+                value={form.paymentDate}
+                onChange={(e) => setForm((p) => ({ ...p, paymentDate: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Data da retirada">
+              <input
+                type="date"
+                value={form.pickupDate}
+                onChange={(e) => setForm((p) => ({ ...p, pickupDate: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
           </FormGrid>
         </div>
       </Modal>
@@ -1123,6 +1203,41 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
+
+            <Field label="Tipo de pagamento">
+              <select
+                value={form.paymentType}
+                onChange={(e) => setForm((p) => ({ ...p, paymentType: e.target.value as PaymentType | "" }))}
+                disabled={modalSaving}
+              >
+                <option value="">Selecione</option>
+                <option value="PIX">PIX</option>
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="CARTAO_CREDITO">Cartão de crédito</option>
+                <option value="CARTAO_DEBITO">Cartão de débito</option>
+                <option value="TRANSFERENCIA">Transferência</option>
+                <option value="BOLETO">Boleto</option>
+                <option value="OUTRO">Outro</option>
+              </select>
+            </Field>
+
+            <Field label="Data do pagamento">
+              <input
+                type="date"
+                value={form.paymentDate}
+                onChange={(e) => setForm((p) => ({ ...p, paymentDate: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
+
+            <Field label="Data da retirada">
+              <input
+                type="date"
+                value={form.pickupDate}
+                onChange={(e) => setForm((p) => ({ ...p, pickupDate: e.target.value }))}
+                disabled={modalSaving}
+              />
+            </Field>
           </FormGrid>
         </div>
       </Modal>
@@ -1183,7 +1298,7 @@ export function ServiceOrdersPage() {
         }
       >
         {cancelModalError ? <ModalError message={cancelModalError} /> : null}
-        <Muted>Você quer mesmo cancelar a OS #{selected?.osNumber}? </Muted>
+        <Muted>Você quer mesmo cancelar a OS #{selected?.osNumber}?</Muted>
       </Modal>
 
       {/* DETAILS */}
@@ -1387,7 +1502,7 @@ export function ServiceOrdersPage() {
             <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
               <div>
-                <strong>Nome:</strong> {orderResponsibleName(selected)}
+                <strong>Nome:</strong> {responsibleName(selected)}
               </div>
             </div>
 
@@ -1436,7 +1551,7 @@ export function ServiceOrdersPage() {
             <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
               <div>
-                <strong>Nome:</strong> {orderResponsibleName(selected)}
+                <strong>Nome:</strong> {responsibleName(selected)}
               </div>
             </div>
 
@@ -1480,6 +1595,7 @@ export function ServiceOrdersPage() {
                       <div style={{ display: "grid", gap: 6 }}>
                         {selected.budget.items.map((it) => {
                           const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
+
                           return (
                             <div
                               key={it.id}
@@ -1552,7 +1668,7 @@ export function ServiceOrdersPage() {
             <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
               <div>
-                <strong>Nome:</strong> {orderResponsibleName(selected)}
+                <strong>Nome:</strong> {responsibleName(selected)}
               </div>
             </div>
 
@@ -1574,15 +1690,27 @@ export function ServiceOrdersPage() {
               <div>
                 <strong>Equipamento:</strong> {equipmentLabel(selected)}
               </div>
-
+              <div>
+                <strong>Tipo de pagamento:</strong>{" "}
+                {selected.paymentType ? PAYMENT_TYPE_LABEL[selected.paymentType] : "-"}
+              </div>
+              <div>
+                <strong>Data do pagamento:</strong> {formatDateOnlyBR(selected.paymentDate)}
+              </div>
+              <div>
+                <strong>Data da retirada:</strong> {formatDateOnlyBR(selected.pickupDate)}
+              </div>
               <div>
                 <strong>Total (baseado no orçamento):</strong>{" "}
                 {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
               </div>
+            </div>
 
-              <Muted>
-                Observação: ainda não existe módulo de “pagamento” no backend. Aqui estamos apenas exibindo um comprovante com base no orçamento salvo.
-              </Muted>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Garantia</div>
+              {WARRANTY_TEXT.map((line) => (
+                <div key={line}>• {line}</div>
+              ))}
             </div>
           </div>
         )}

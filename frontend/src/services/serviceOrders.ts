@@ -9,28 +9,33 @@ export type ServiceOrderStatus =
   | "ENTREGUE"
   | "CANCELADA";
 
+export type PaymentType =
+  | "PIX"
+  | "DINHEIRO"
+  | "CARTAO_CREDITO"
+  | "CARTAO_DEBITO"
+  | "TRANSFERENCIA"
+  | "BOLETO"
+  | "OUTRO";
+
 export type ServiceOrderBudgetItem = {
   id: string;
   description: string;
   technician?: string | null;
   qty: number;
-  unitValue: number | string; // Prisma Decimal costuma vir como string
+  unitValue: number | string;
 };
 
 export type ServiceOrderBudget = {
   id: string;
   serviceOrderId: string;
-
-  travelFee: number | string; // deslocamento
-  thirdPartyFee: number | string; // terceiros
+  travelFee: number | string;
+  thirdPartyFee: number | string;
   discount: number | string;
-
   note?: string | null;
   approvedAt?: string | null;
   rejectedAt?: string | null;
-
   items: ServiceOrderBudgetItem[];
-
   createdAt?: string;
   updatedAt?: string;
 };
@@ -38,41 +43,37 @@ export type ServiceOrderBudget = {
 export type ServiceOrder = {
   id: string;
   osNumber: number;
-
   clientId: string;
   status: ServiceOrderStatus;
-
   entryDate?: string;
 
-  // dados “congelados” na OS
   clientCpfCnpj: string;
 
-  // equipamento preenchido na OS
   equipmentType: string;
   equipmentBrand?: string | null;
   equipmentModel?: string | null;
   equipmentSerialNumber?: string | null;
   equipmentPassword?: string | null;
 
-  // dados da OS
   symptoms: string;
   accessories?: string | null;
   observations?: string | null;
 
-  // (mantidos por compatibilidade / uso futuro)
   budgetValue?: number | string | null;
   finalValue?: number | string | null;
+
+  paymentType?: PaymentType | null;
+  paymentDate?: string | null;
+  pickupDate?: string | null;
 
   createdAt?: string;
   updatedAt?: string;
 
-  // relations
   client?: {
     id: string;
     name: string;
     phone?: string | null;
     email?: string | null;
-
     cpfCnpj?: string | null;
     address?: string | null;
     district?: string | null;
@@ -81,41 +82,46 @@ export type ServiceOrder = {
     zipCode?: string | null;
   } | null;
 
+  createdByUser?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+  } | null;
+
   budget?: ServiceOrderBudget | null;
 };
 
 export type CreateServiceOrderInput = {
   clientId: string;
   clientCpfCnpj: string;
-
   equipmentType: string;
   equipmentBrand?: string;
   equipmentModel?: string;
   equipmentSerialNumber?: string;
   equipmentPassword?: string;
-
   symptoms: string;
   accessories?: string;
   observations?: string;
-
-  // não enviar budgetValue/finalValue no create (orçamento é outro fluxo)
+  paymentType?: PaymentType;
+  paymentDate?: string;
+  pickupDate?: string;
 };
 
 export type UpdateServiceOrderInput = {
   clientId?: string;
   clientCpfCnpj?: string;
-
   equipmentType?: string;
   equipmentBrand?: string | null;
   equipmentModel?: string | null;
   equipmentSerialNumber?: string | null;
   equipmentPassword?: string | null;
-
   symptoms?: string;
   accessories?: string | null;
   observations?: string | null;
-
-  // não enviar budgetValue/finalValue aqui (orçamento é outro fluxo)
+  paymentType?: PaymentType | null;
+  paymentDate?: string | null;
+  pickupDate?: string | null;
 };
 
 export type UpsertBudgetItemInput = {

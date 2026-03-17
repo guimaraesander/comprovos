@@ -22,14 +22,24 @@ enum ServiceOrderStatus {
   CANCELADA
 }
 
+enum PaymentType {
+  PIX
+  DINHEIRO
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  TRANSFERENCIA
+  BOLETO
+  OUTRO
+}
+
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  passwordHash String
-  role         UserRole  @default(TECNICO)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  role          UserRole       @default(TECNICO)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   serviceOrders ServiceOrder[] @relation("CreatedByUser")
 
@@ -37,20 +47,20 @@ model User {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String
-  email     String?
-  cpfCnpj   String   @unique
-  rgIe      String?
-  address   String?
-  district  String?
-  city      String?
-  state     String?
-  zipCode   String?
+  id            String         @id @default(cuid())
+  name          String
+  phone         String
+  email         String?
+  cpfCnpj       String         @unique
+  rgIe          String?
+  address       String?
+  district      String?
+  city          String?
+  state         String?
+  zipCode       String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   serviceOrders ServiceOrder[]
 
@@ -59,44 +69,45 @@ model Client {
 }
 
 model ServiceOrder {
-  id              String             @id @default(cuid())
-  osNumber         Int                @unique @default(autoincrement())
+  id                     String              @id @default(cuid())
+  osNumber               Int                 @unique @default(autoincrement())
 
-  clientId         String
-  createdByUserId  String?
-  entryDate        DateTime           @default(now())
+  clientId               String
+  createdByUserId        String?
+  entryDate              DateTime            @default(now())
 
-  // dados do cliente "congelados" na OS
-  clientCpfCnpj    String
+  clientCpfCnpj          String
 
-  // dados do equipamento preenchidos na OS
   equipmentType          String
   equipmentBrand         String?
   equipmentModel         String?
   equipmentSerialNumber  String?
   equipmentPassword      String?
 
-  symptoms         String
-  accessories      String?
-  observations     String?
+  symptoms               String
+  accessories            String?
+  observations           String?
 
-  status           ServiceOrderStatus @default(ABERTA)
+  status                 ServiceOrderStatus  @default(ABERTA)
 
-  // (mantidos por compatibilidade / uso futuro)
-  budgetValue      Decimal?           @db.Decimal(10, 2)
-  finalValue       Decimal?           @db.Decimal(10, 2)
+  budgetValue            Decimal?            @db.Decimal(10, 2)
+  finalValue             Decimal?            @db.Decimal(10, 2)
 
-  webKey           String?            @unique
-  trackingPassword String?
+  paymentType            PaymentType?
+  paymentDate            DateTime?
+  pickupDate             DateTime?
 
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  webKey                 String?             @unique
+  trackingPassword       String?
 
-  client           Client             @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  createdByUser    User?              @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
 
-  history          ServiceOrderHistory[]
-  budget           ServiceOrderBudget?
+  client                 Client              @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdByUser          User?               @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  history                ServiceOrderHistory[]
+  budget                 ServiceOrderBudget?
 
   @@index([clientId])
   @@index([status])
@@ -117,24 +128,22 @@ model ServiceOrderHistory {
   @@map("service_order_history")
 }
 
-// ✅ 1 orçamento por OS
 model ServiceOrderBudget {
-  id             String   @id @default(cuid())
-  serviceOrderId String   @unique
+  id             String                 @id @default(cuid())
+  serviceOrderId String                 @unique
 
-  // valores extras
-  travelFee      Decimal  @db.Decimal(10, 2) @default(0) // deslocamento
-  thirdPartyFee  Decimal  @db.Decimal(10, 2) @default(0) // serviço terceiros
-  discount       Decimal  @db.Decimal(10, 2) @default(0)
+  travelFee      Decimal                @db.Decimal(10, 2) @default(0)
+  thirdPartyFee  Decimal                @db.Decimal(10, 2) @default(0)
+  discount       Decimal                @db.Decimal(10, 2) @default(0)
 
   note           String?
   approvedAt     DateTime?
   rejectedAt     DateTime?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
-  serviceOrder   ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  serviceOrder   ServiceOrder           @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
   items          ServiceOrderBudgetItem[]
 
   @@index([serviceOrderId])
@@ -142,18 +151,18 @@ model ServiceOrderBudget {
 }
 
 model ServiceOrderBudgetItem {
-  id          String   @id @default(cuid())
+  id          String               @id @default(cuid())
   budgetId    String
 
-  description String   // “serviço executado”
+  description String
   technician  String?
-  qty         Int      @default(1)
-  unitValue   Decimal  @db.Decimal(10, 2)
+  qty         Int                  @default(1)
+  unitValue   Decimal              @db.Decimal(10, 2)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
-  budget      ServiceOrderBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  budget      ServiceOrderBudget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
 
   @@index([budgetId])
   @@map("service_order_budget_items")

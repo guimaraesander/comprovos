@@ -8,7 +8,6 @@ import type {
 import { BudgetsService } from "./budgets.service";
 
 const FLOW = ["ABERTA", "EM_ANALISE", "AGUARDANDO_APROVACAO", "EM_MANUTENCAO", "FINALIZADA", "ENTREGUE"] as const;
-type FlowStatus = (typeof FLOW)[number];
 
 function indexInFlow(s: string) {
   return FLOW.indexOf(s as any);
@@ -70,6 +69,10 @@ export class ServiceOrdersService {
 
         budgetValue: input.budgetValue ?? null,
         finalValue: input.finalValue ?? null,
+
+        paymentType: input.paymentType ?? null,
+        paymentDate: input.paymentDate ?? null,
+        pickupDate: input.pickupDate ?? null,
       },
       include: serviceOrderInclude,
     });
@@ -127,6 +130,10 @@ export class ServiceOrdersService {
 
         ...(input.budgetValue !== undefined ? { budgetValue: input.budgetValue ?? null } : {}),
         ...(input.finalValue !== undefined ? { finalValue: input.finalValue ?? null } : {}),
+
+        ...(input.paymentType !== undefined ? { paymentType: input.paymentType ?? null } : {}),
+        ...(input.paymentDate !== undefined ? { paymentDate: input.paymentDate ?? null } : {}),
+        ...(input.pickupDate !== undefined ? { pickupDate: input.pickupDate ?? null } : {}),
       },
       include: serviceOrderInclude,
     });

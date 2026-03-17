@@ -19,6 +19,16 @@ const toOptionalNumber = z.preprocess((v) => {
   return v;
 }, z.number().nonnegative().optional());
 
+const toOptionalDate = z.preprocess((v) => {
+  if (v === null || v === undefined || v === "") return undefined;
+  if (v instanceof Date) return v;
+  if (typeof v === "string") {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? v : d;
+  }
+  return v;
+}, z.date().optional());
+
 export const serviceOrderStatusSchema = z.enum([
   "ABERTA",
   "EM_ANALISE",
@@ -29,31 +39,39 @@ export const serviceOrderStatusSchema = z.enum([
   "CANCELADA",
 ]);
 
-export const createServiceOrderSchema = z.object({
-  // cliente existe no sistema
-  clientId: z.string().min(1),
+export const paymentTypeSchema = z.enum([
+  "PIX",
+  "DINHEIRO",
+  "CARTAO_CREDITO",
+  "CARTAO_DEBITO",
+  "TRANSFERENCIA",
+  "BOLETO",
+  "OUTRO",
+]);
 
-  // CPF/CNPJ obrigatório na OS (registro “de entrada”)
+export const createServiceOrderSchema = z.object({
+  clientId: z.string().min(1),
   clientCpfCnpj: z.string().min(1),
 
-  // equipamento preenchido na OS (não é entidade separada)
   equipmentType: z.string().min(1),
   equipmentBrand: toOptionalString,
   equipmentModel: toOptionalString,
   equipmentSerialNumber: toOptionalString,
   equipmentPassword: toOptionalString,
 
-  // dados da OS
   symptoms: z.string().min(1),
   accessories: toOptionalString,
   observations: toOptionalString,
 
   budgetValue: toOptionalNumber,
   finalValue: toOptionalNumber,
+
+  paymentType: paymentTypeSchema.optional(),
+  paymentDate: toOptionalDate,
+  pickupDate: toOptionalDate,
 });
 
 export const updateServiceOrderSchema = z.object({
-  // normalmente NÃO muda clientId depois, mas se quiser permitir, deixa optional
   clientId: z.string().min(1).optional(),
   clientCpfCnpj: z.string().min(1).optional(),
 
@@ -69,6 +87,10 @@ export const updateServiceOrderSchema = z.object({
 
   budgetValue: toOptionalNumber,
   finalValue: toOptionalNumber,
+
+  paymentType: paymentTypeSchema.nullable().optional(),
+  paymentDate: toOptionalDate.nullable().optional(),
+  pickupDate: toOptionalDate.nullable().optional(),
 });
 
 export const updateServiceOrderStatusSchema = z.object({
@@ -79,3 +101,4 @@ export type CreateServiceOrderInput = z.infer<typeof createServiceOrderSchema>;
 export type UpdateServiceOrderInput = z.infer<typeof updateServiceOrderSchema>;
 export type UpdateServiceOrderStatusInput = z.infer<typeof updateServiceOrderStatusSchema>;
 export type ServiceOrderStatusInput = z.infer<typeof serviceOrderStatusSchema>;
+export type PaymentTypeInput = z.infer<typeof paymentTypeSchema>;
