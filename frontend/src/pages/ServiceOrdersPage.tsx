@@ -97,6 +97,10 @@ const BUDGET_VALIDITY_TEXT = "Orçamento válido por 10 dias.";
 const PAYMENT_RECEIPT_DECLARATION_TEXT =
   "Declaro estar recebendo o equipamento e os materiais constantes nesta Ordem de Serviço devidamente reparados.";
 
+const COMPANY_NAME = "ComprovOS Assistência Técnica";
+const COMPANY_CONTACT = "Telefone / WhatsApp: (85) 98765-4321";
+const COMPANY_ADDRESS = "Endereço da assistência: Rua Major Facundo, 1020, Sala 405 – Centro, Fortaleza - CE, CEP: 60025-100";
+
 const STATUS_FLOW: ServiceOrderStatus[] = [
   "ABERTA",
   "EM_ANALISE",
@@ -360,6 +364,7 @@ function buildPrintableHtml(title: string, content: string) {
         <title>${title}</title>
         <style>
           * { box-sizing: border-box; }
+
           body {
             font-family: Arial, Helvetica, sans-serif;
             color: #101828;
@@ -367,47 +372,76 @@ function buildPrintableHtml(title: string, content: string) {
             padding: 24px;
             background: #ffffff;
           }
+
           .doc {
             max-width: 900px;
             margin: 0 auto;
             display: grid;
-            gap: 16px;
+            gap: 18px;
           }
+
+          .company-header {
+            border: 1px solid #d0d5dd;
+            border-radius: 12px;
+            padding: 16px;
+            display: grid;
+            gap: 6px;
+            background: #f8fafc;
+          }
+
+          .company-name {
+            font-size: 24px;
+            font-weight: 700;
+          }
+
+          .company-line {
+            font-size: 13px;
+            color: #344054;
+          }
+
           .doc-header {
             border-bottom: 1px solid #d0d5dd;
             padding-bottom: 10px;
             display: grid;
             gap: 8px;
           }
+
           .doc-title {
             font-size: 22px;
             font-weight: 700;
           }
+
           .doc-meta {
             display: flex;
             flex-wrap: wrap;
             gap: 16px;
             font-size: 14px;
           }
+
           .section {
             display: grid;
             gap: 8px;
           }
+
           .section-title {
             font-size: 16px;
             font-weight: 700;
           }
+
           .line {
             font-size: 14px;
             line-height: 1.5;
           }
+
           .muted {
             color: #475467;
           }
+
           .items {
             display: grid;
             gap: 8px;
           }
+
           .item {
             display: grid;
             grid-template-columns: 1fr auto;
@@ -415,23 +449,28 @@ function buildPrintableHtml(title: string, content: string) {
             padding-bottom: 8px;
             border-bottom: 1px solid #eaecf0;
           }
+
           .item-title {
             font-weight: 700;
           }
+
           .item-meta {
             font-size: 12px;
             color: #667085;
           }
+
           .totals {
             display: grid;
             gap: 6px;
           }
+
           .total-line {
             display: flex;
             justify-content: space-between;
             gap: 16px;
             font-size: 14px;
           }
+
           .total-line.final {
             font-size: 16px;
             font-weight: 700;
@@ -439,15 +478,82 @@ function buildPrintableHtml(title: string, content: string) {
             padding-top: 8px;
             margin-top: 6px;
           }
+
           ul.notes {
             margin: 0;
             padding-left: 18px;
             display: grid;
             gap: 6px;
           }
+
+          .signatures {
+            margin-top: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            padding-top: 18px;
+          }
+
+          .signature-box {
+            display: grid;
+            gap: 10px;
+            align-content: end;
+          }
+
+          .signature-line {
+            border-top: 1px solid #101828;
+            padding-top: 6px;
+            font-size: 13px;
+            text-align: center;
+          }
+
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+
           @media print {
+            .doc {
+              max-width: none;
+              gap: 10px;
+              font-size: 11px;
+            }
+
+            .company-name {
+              font-size: 22px;
+            }
+
+            .doc-title {
+              font-size: 18px;
+            }
+
+            .doc-meta,
+            .line,
+            .item,
+            .total-line,
+            .signature-line,
+            .notes li,
+            .muted {
+              font-size: 11px;
+            }
+
             body {
               padding: 0;
+            }
+
+            .section {
+              break-inside: avoid;
+              page-break-inside: avoid;
+              gap: 6px;
+            }
+
+            .item,
+            .totals,
+            .signatures,
+            .signature-box,
+            .notes li {
+              break-inside: avoid;
+              page-break-inside: avoid;
             }
           }
         </style>
@@ -491,6 +597,13 @@ function renderItemsHtml(items: ServiceOrderBudgetItem[] | undefined) {
 function buildEntryDocumentHtml(selected: ServiceOrder) {
   return `
     <div class="doc">
+      <div class="company-header">
+        <div class="company-name">${COMPANY_NAME}</div>
+        <div class="company-line">${COMPANY_CONTACT}</div>
+        <div class="company-line">${COMPANY_ADDRESS}</div>
+        <div class="company-line">Documento digital gerado pelo sistema ComprovOS.</div>
+      </div>
+
       <div class="doc-header">
         <div class="doc-title">Comprovante de Entrada</div>
         <div class="doc-meta">
@@ -543,6 +656,15 @@ function buildEntryDocumentHtml(selected: ServiceOrder) {
           ${ENTRY_NOTES_TEXT.map((line) => `<li>${line}</li>`).join("")}
         </ul>
       </div>
+
+      <div class="signatures">
+        <div class="signature-box">
+          <div class="signature-line">Assinatura do cliente</div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-line">Responsável pela assistência</div>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -550,6 +672,13 @@ function buildEntryDocumentHtml(selected: ServiceOrder) {
 function buildBudgetDocumentHtml(selected: ServiceOrder) {
   return `
     <div class="doc">
+      <div class="company-header">
+        <div class="company-name">${COMPANY_NAME}</div>
+        <div class="company-line">${COMPANY_CONTACT}</div>
+        <div class="company-line">${COMPANY_ADDRESS}</div>
+        <div class="company-line">Documento digital gerado pelo sistema ComprovOS.</div>
+      </div>
+
       <div class="doc-header">
         <div class="doc-title">Orçamento da Ordem de Serviço</div>
         <div class="doc-meta">
@@ -635,6 +764,15 @@ function buildBudgetDocumentHtml(selected: ServiceOrder) {
       </div>`
           : ""
       }
+
+      <div class="signatures">
+        <div class="signature-box">
+          <div class="signature-line">Assinatura do cliente</div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-line">Responsável pela assistência</div>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -642,6 +780,13 @@ function buildBudgetDocumentHtml(selected: ServiceOrder) {
 function buildPaymentDocumentHtml(selected: ServiceOrder) {
   return `
     <div class="doc">
+      <div class="company-header">
+        <div class="company-name">${COMPANY_NAME}</div>
+        <div class="company-line">${COMPANY_CONTACT}</div>
+        <div class="company-line">${COMPANY_ADDRESS}</div>
+        <div class="company-line">Documento digital gerado pelo sistema ComprovOS.</div>
+      </div>
+
       <div class="doc-header">
         <div class="doc-title">Comprovante de Pagamento</div>
         <div class="doc-meta">
@@ -720,6 +865,15 @@ function buildPaymentDocumentHtml(selected: ServiceOrder) {
       <div class="section">
         <div class="section-title">Declaração de recebimento</div>
         <div class="line">${PAYMENT_RECEIPT_DECLARATION_TEXT}</div>
+      </div>
+
+      <div class="signatures">
+        <div class="signature-box">
+          <div class="signature-line">Assinatura do cliente</div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-line">Responsável pela assistência</div>
+        </div>
       </div>
     </div>
   `;
