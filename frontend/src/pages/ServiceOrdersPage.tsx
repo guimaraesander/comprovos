@@ -111,18 +111,15 @@ const STATUS_FLOW: ServiceOrderStatus[] = [
 type FormState = {
   clientId: string;
   clientCpfCnpj: string;
-
   clientName: string;
   clientPhone: string;
   clientEmail: string;
   clientAddress: string;
-
   equipmentType: string;
   equipmentBrand: string;
   equipmentModel: string;
   equipmentSerialNumber: string;
   equipmentPassword: string;
-
   symptoms: string;
   accessories: string;
   observations: string;
@@ -131,18 +128,15 @@ type FormState = {
 const initialForm: FormState = {
   clientId: "",
   clientCpfCnpj: "",
-
   clientName: "",
   clientPhone: "",
   clientEmail: "",
   clientAddress: "",
-
   equipmentType: "",
   equipmentBrand: "",
   equipmentModel: "",
   equipmentSerialNumber: "",
   equipmentPassword: "",
-
   symptoms: "",
   accessories: "",
   observations: "",
@@ -356,15 +350,420 @@ function newLocalId() {
   return `tmp_${Math.random().toString(16).slice(2)}_${Date.now()}`;
 }
 
+function buildPrintableHtml(title: string, content: string) {
+  return `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>${title}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #101828;
+            margin: 0;
+            padding: 24px;
+            background: #ffffff;
+          }
+          .doc {
+            max-width: 900px;
+            margin: 0 auto;
+            display: grid;
+            gap: 16px;
+          }
+          .doc-header {
+            border-bottom: 1px solid #d0d5dd;
+            padding-bottom: 10px;
+            display: grid;
+            gap: 8px;
+          }
+          .doc-title {
+            font-size: 22px;
+            font-weight: 700;
+          }
+          .doc-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 14px;
+          }
+          .section {
+            display: grid;
+            gap: 8px;
+          }
+          .section-title {
+            font-size: 16px;
+            font-weight: 700;
+          }
+          .line {
+            font-size: 14px;
+            line-height: 1.5;
+          }
+          .muted {
+            color: #475467;
+          }
+          .items {
+            display: grid;
+            gap: 8px;
+          }
+          .item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eaecf0;
+          }
+          .item-title {
+            font-weight: 700;
+          }
+          .item-meta {
+            font-size: 12px;
+            color: #667085;
+          }
+          .totals {
+            display: grid;
+            gap: 6px;
+          }
+          .total-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            font-size: 14px;
+          }
+          .total-line.final {
+            font-size: 16px;
+            font-weight: 700;
+            border-top: 1px solid #d0d5dd;
+            padding-top: 8px;
+            margin-top: 6px;
+          }
+          ul.notes {
+            margin: 0;
+            padding-left: 18px;
+            display: grid;
+            gap: 6px;
+          }
+          @media print {
+            body {
+              padding: 0;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        ${content}
+      </body>
+    </html>
+  `;
+}
+
+function printableValue(value?: string | null) {
+  return value && value.trim().length ? value : "-";
+}
+
+function renderItemsHtml(items: ServiceOrderBudgetItem[] | undefined) {
+  if (!items?.length) {
+    return `<div class="muted">Nenhum serviço registrado.</div>`;
+  }
+
+  return `
+    <div class="items">
+      ${items
+        .map((it) => {
+          const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
+          return `
+            <div class="item">
+              <div>
+                <div class="item-title">${it.description}</div>
+                <div class="item-meta">Técnico responsável: ${printableValue(it.technician)} • Qtd: ${it.qty}</div>
+              </div>
+              <div><strong>R$ ${lineTotal.toFixed(2)}</strong></div>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function buildEntryDocumentHtml(selected: ServiceOrder) {
+  return `
+    <div class="doc">
+      <div class="doc-header">
+        <div class="doc-title">Comprovante de Entrada</div>
+        <div class="doc-meta">
+          <div><strong>Nº OS:</strong> ${selected.osNumber}</div>
+          <div><strong>Data de entrada:</strong> ${formatDateTimeBR(selected.entryDate || selected.createdAt)}</div>
+          <div><strong>Status:</strong> ${STATUS_LABEL[selected.status]}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Responsável pela OS</div>
+        <div class="line"><strong>Nome:</strong> ${responsibleName(selected)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Dados do Cliente</div>
+        <div class="line"><strong>Nome:</strong> ${printableValue(selected.client?.name)}</div>
+        <div class="line"><strong>CPF/CNPJ:</strong> ${printableValue(selected.clientCpfCnpj)}</div>
+        <div class="line"><strong>Telefone:</strong> ${printableValue(selected.client?.phone)}</div>
+        <div class="line"><strong>Email:</strong> ${printableValue(selected.client?.email)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Dados do Equipamento</div>
+        <div class="line"><strong>Equipamento:</strong> ${equipmentLabel(selected)}</div>
+        <div class="line"><strong>Marca:</strong> ${printableValue(selected.equipmentBrand)}</div>
+        <div class="line"><strong>Modelo:</strong> ${printableValue(selected.equipmentModel)}</div>
+        <div class="line"><strong>Nº de série:</strong> ${printableValue(selected.equipmentSerialNumber)}</div>
+        <div class="line"><strong>Senha:</strong> ${printableValue(selected.equipmentPassword)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Defeito / Reclamação</div>
+        <div class="line">${printableValue(selected.symptoms)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Acessórios</div>
+        <div class="line">${printableValue(selected.accessories)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Observações da OS</div>
+        <div class="line">${printableValue(selected.observations)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Observações importantes</div>
+        <ul class="notes">
+          ${ENTRY_NOTES_TEXT.map((line) => `<li>${line}</li>`).join("")}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
+function buildBudgetDocumentHtml(selected: ServiceOrder) {
+  return `
+    <div class="doc">
+      <div class="doc-header">
+        <div class="doc-title">Orçamento da Ordem de Serviço</div>
+        <div class="doc-meta">
+          <div><strong>Nº OS:</strong> ${selected.osNumber}</div>
+          <div><strong>Entrada:</strong> ${formatDateTimeBR(selected.entryDate || selected.createdAt)}</div>
+          <div><strong>Status:</strong> ${STATUS_LABEL[selected.status]}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Responsável pela OS</div>
+        <div class="line"><strong>Nome:</strong> ${responsibleName(selected)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Dados do Cliente</div>
+        <div class="line"><strong>Nome:</strong> ${printableValue(selected.client?.name)}</div>
+        <div class="line"><strong>CPF/CNPJ:</strong> ${printableValue(selected.clientCpfCnpj)}</div>
+        <div class="line"><strong>Telefone:</strong> ${printableValue(selected.client?.phone)}</div>
+        <div class="line"><strong>Email:</strong> ${printableValue(selected.client?.email)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Dados do Equipamento</div>
+        <div class="line"><strong>Equipamento:</strong> ${equipmentLabel(selected)}</div>
+        <div class="line"><strong>Marca:</strong> ${printableValue(selected.equipmentBrand)}</div>
+        <div class="line"><strong>Modelo:</strong> ${printableValue(selected.equipmentModel)}</div>
+        <div class="line"><strong>Nº de série:</strong> ${printableValue(selected.equipmentSerialNumber)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Defeito / Reclamação</div>
+        <div class="line">${printableValue(selected.symptoms)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Serviços a executar</div>
+        ${renderItemsHtml(selected.budget?.items)}
+      </div>
+
+      <div class="section">
+        <div class="section-title">Totais do Orçamento</div>
+        <div class="totals">
+          <div class="total-line">
+            <span>Subtotal (serviços)</span>
+            <strong>R$ ${selected.budget ? calcBudgetItemsTotal(selected.budget.items).toFixed(2) : "0.00"}</strong>
+          </div>
+          <div class="total-line">
+            <span>Deslocamento</span>
+            <strong>R$ ${selected.budget ? toMoneyNumber(selected.budget.travelFee).toFixed(2) : "0.00"}</strong>
+          </div>
+          <div class="total-line">
+            <span>Serviço de terceiros</span>
+            <strong>R$ ${selected.budget ? toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2) : "0.00"}</strong>
+          </div>
+          <div class="total-line">
+            <span>Desconto</span>
+            <strong>- R$ ${selected.budget ? toMoneyNumber(selected.budget.discount).toFixed(2) : "0.00"}</strong>
+          </div>
+          <div class="total-line final">
+            <span>Total</span>
+            <span>${selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Condições de pagamento</div>
+        <div class="line">${BUDGET_PAYMENT_CONDITIONS_TEXT}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Validade</div>
+        <div class="line">${BUDGET_VALIDITY_TEXT}</div>
+      </div>
+
+      ${
+        selected.budget?.note
+          ? `
+      <div class="section">
+        <div class="section-title">Observações do orçamento</div>
+        <div class="line">${selected.budget.note}</div>
+      </div>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+function buildPaymentDocumentHtml(selected: ServiceOrder) {
+  return `
+    <div class="doc">
+      <div class="doc-header">
+        <div class="doc-title">Comprovante de Pagamento</div>
+        <div class="doc-meta">
+          <div><strong>Nº OS:</strong> ${selected.osNumber}</div>
+          <div><strong>Data de entrada:</strong> ${formatDateTimeBR(selected.entryDate || selected.createdAt)}</div>
+          <div><strong>Status:</strong> ${STATUS_LABEL[selected.status]}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Responsável pela OS</div>
+        <div class="line"><strong>Nome:</strong> ${responsibleName(selected)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Dados do Cliente</div>
+        <div class="line"><strong>Nome:</strong> ${printableValue(selected.client?.name)}</div>
+        <div class="line"><strong>CPF/CNPJ:</strong> ${printableValue(selected.clientCpfCnpj)}</div>
+        <div class="line"><strong>Telefone:</strong> ${printableValue(selected.client?.phone)}</div>
+        <div class="line"><strong>Email:</strong> ${printableValue(selected.client?.email)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Dados do Equipamento</div>
+        <div class="line"><strong>Equipamento:</strong> ${equipmentLabel(selected)}</div>
+        <div class="line"><strong>Marca:</strong> ${printableValue(selected.equipmentBrand)}</div>
+        <div class="line"><strong>Modelo:</strong> ${printableValue(selected.equipmentModel)}</div>
+        <div class="line"><strong>Nº de série:</strong> ${printableValue(selected.equipmentSerialNumber)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Serviços executados</div>
+        ${renderItemsHtml(selected.budget?.items)}
+      </div>
+
+      <div class="section">
+        <div class="section-title">Pagamento e retirada</div>
+        <div class="line"><strong>Tipo de pagamento:</strong> ${selected.paymentType ? PAYMENT_TYPE_LABEL[selected.paymentType] : "-"}</div>
+        <div class="line"><strong>Data do pagamento:</strong> ${formatDateOnlyBR(selected.paymentDate)}</div>
+        <div class="line"><strong>Data da retirada:</strong> ${formatDateOnlyBR(selected.pickupDate)}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Totais</div>
+        <div class="totals">
+          <div class="total-line">
+            <span>Subtotal (serviços)</span>
+            <strong>R$ ${selected.budget ? calcBudgetItemsTotal(selected.budget.items).toFixed(2) : "0.00"}</strong>
+          </div>
+          <div class="total-line">
+            <span>Deslocamento</span>
+            <strong>R$ ${selected.budget ? toMoneyNumber(selected.budget.travelFee).toFixed(2) : "0.00"}</strong>
+          </div>
+          <div class="total-line">
+            <span>Serviço de terceiros</span>
+            <strong>R$ ${selected.budget ? toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2) : "0.00"}</strong>
+          </div>
+          <div class="total-line">
+            <span>Desconto</span>
+            <strong>- R$ ${selected.budget ? toMoneyNumber(selected.budget.discount).toFixed(2) : "0.00"}</strong>
+          </div>
+          <div class="total-line final">
+            <span>Total</span>
+            <span>${selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Garantia</div>
+        <ul class="notes">
+          ${WARRANTY_TEXT.map((line) => `<li>${line}</li>`).join("")}
+        </ul>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Declaração de recebimento</div>
+        <div class="line">${PAYMENT_RECEIPT_DECLARATION_TEXT}</div>
+      </div>
+    </div>
+  `;
+}
+
+function printCurrentDocument(selected: ServiceOrder, viewMode: ViewMode) {
+  const title =
+    viewMode === "ENTRY"
+      ? `Comprovante de Entrada - OS ${selected.osNumber}`
+      : viewMode === "BUDGET"
+      ? `Orçamento - OS ${selected.osNumber}`
+      : `Comprovante de Pagamento - OS ${selected.osNumber}`;
+
+  const body =
+    viewMode === "ENTRY"
+      ? buildEntryDocumentHtml(selected)
+      : viewMode === "BUDGET"
+      ? buildBudgetDocumentHtml(selected)
+      : buildPaymentDocumentHtml(selected);
+
+  const win = window.open("", "_blank", "width=900,height=700");
+
+  if (!win) {
+    window.alert("Não foi possível abrir a janela de impressão. Verifique se o navegador bloqueou pop-ups.");
+    return;
+  }
+
+  win.document.open();
+  win.document.write(buildPrintableHtml(title, body));
+  win.document.close();
+
+  win.focus();
+  setTimeout(() => {
+    win.print();
+  }, 250);
+}
+
 export function ServiceOrdersPage() {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
-
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
@@ -374,16 +773,13 @@ export function ServiceOrdersPage() {
   const [isBudgetOpen, setIsBudgetOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isPickupOpen, setIsPickupOpen] = useState(false);
-
   const [budgetForm, setBudgetForm] = useState<BudgetForm>(initialBudgetForm);
   const [paymentForm, setPaymentForm] = useState<PaymentForm>(initialPaymentForm);
   const [modalSaving, setModalSaving] = useState(false);
-
   const [selected, setSelected] = useState<ServiceOrder | null>(null);
   const [form, setForm] = useState<FormState>(initialForm);
   const [nextStatus, setNextStatus] = useState<ServiceOrderStatus>("EM_ANALISE");
   const [statusOptions, setStatusOptions] = useState<ServiceOrderStatus[]>([]);
-
   const [createModalError, setCreateModalError] = useState<string | null>(null);
   const [editModalError, setEditModalError] = useState<string | null>(null);
   const [statusModalError, setStatusModalError] = useState<string | null>(null);
@@ -391,7 +787,6 @@ export function ServiceOrdersPage() {
   const [budgetModalError, setBudgetModalError] = useState<string | null>(null);
   const [paymentModalError, setPaymentModalError] = useState<string | null>(null);
   const [pickupModalError, setPickupModalError] = useState<string | null>(null);
-
   const [cpfQuery, setCpfQuery] = useState("");
   const [cpfOpen, setCpfOpen] = useState(false);
   const cpfBoxRef = useRef<HTMLDivElement | null>(null);
@@ -640,7 +1035,6 @@ export function ServiceOrdersPage() {
   function openStatus(order: ServiceOrder) {
     setSelected(order);
     setStatusModalError(null);
-
     const opts = nextStatusesAllowed(order.status);
     setStatusOptions(opts);
     setNextStatus(opts[0] ?? order.status);
@@ -849,8 +1243,7 @@ export function ServiceOrdersPage() {
       };
 
       const saved = await upsertServiceOrderBudget(selected.id, payload);
-      setOrders((prev) => prev.map((o) => (o.id === selected.id ? ({ ...o, budget: saved } as any) : o)));
-
+      setOrders((prev) => prev.map((o) => (o.id === selected.id ? ({ ...o, budget: saved } as ServiceOrder) : o)));
       closeAllModals();
     } catch (err) {
       setBudgetModalError(safeErrorMessage(err));
@@ -915,7 +1308,6 @@ export function ServiceOrdersPage() {
                   return (
                     <tr key={o.id}>
                       <td>{o.osNumber}</td>
-
                       <td>
                         <button
                           type="button"
@@ -931,11 +1323,11 @@ export function ServiceOrdersPage() {
                             rowBusy
                               ? "Aguarde..."
                               : o.status === "FINALIZADA" ||
-                                o.status === "PAGO" ||
-                                o.status === "CANCELADA" ||
-                                o.status === "ENTREGUE"
-                              ? "Use as ações próprias do fluxo para concluir a OS."
-                              : "Clique para alterar o status"
+                                  o.status === "PAGO" ||
+                                  o.status === "CANCELADA" ||
+                                  o.status === "ENTREGUE"
+                                ? "Use as ações próprias do fluxo para concluir a OS."
+                                : "Clique para alterar o status"
                           }
                           style={{
                             ...statusBadgeStyle(o.status),
@@ -946,11 +1338,9 @@ export function ServiceOrdersPage() {
                           {rowBusy ? "..." : STATUS_LABEL[o.status]}
                         </button>
                       </td>
-
                       <td>{client?.name || "-"}</td>
                       <td>{o.clientCpfCnpj || "-"}</td>
                       <td>{equipmentLabel(o)}</td>
-
                       <td>
                         <span title={o.symptoms}>{short || "-"}</span>
                         {truncated && (
@@ -976,7 +1366,6 @@ export function ServiceOrdersPage() {
                           </>
                         )}
                       </td>
-
                       <td>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <Button type="button" variant="secondary" onClick={() => openView(o)} disabled={rowBusy}>
@@ -988,7 +1377,9 @@ export function ServiceOrdersPage() {
                             variant="secondary"
                             onClick={() => (editIsBudget ? openBudget(o) : openEdit(o))}
                             disabled={rowBusy || onlyView}
-                            title={onlyView ? "Neste status não é possível editar." : editIsBudget ? "Editar orçamento" : "Editar entrada"}
+                            title={
+                              onlyView ? "Neste status não é possível editar." : editIsBudget ? "Editar orçamento" : "Editar entrada"
+                            }
                           >
                             {editIsBudget ? "Orçamento" : "Editar"}
                           </Button>
@@ -1040,7 +1431,6 @@ export function ServiceOrdersPage() {
         </Card>
       )}
 
-      {/* CREATE */}
       <Modal
         title="Nova OS (Entrada)"
         subtitle="Digite o CPF/CNPJ para localizar o cliente e preencher os dados do equipamento."
@@ -1072,7 +1462,6 @@ export function ServiceOrdersPage() {
                     const v = e.target.value;
                     setCpfQuery(v);
                     setCpfOpen(true);
-
                     clearClientSelection();
 
                     const q = normalizeCpfCnpj(v);
@@ -1131,7 +1520,6 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
             <Field label="Marca">
               <input
                 value={form.equipmentBrand}
@@ -1140,7 +1528,6 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
             <Field label="Modelo">
               <input
                 value={form.equipmentModel}
@@ -1149,7 +1536,6 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
             <Field label="Nº de série">
               <input
                 value={form.equipmentSerialNumber}
@@ -1158,7 +1544,6 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
             <Field label="Senha do equipamento">
               <input
                 value={form.equipmentPassword}
@@ -1167,7 +1552,6 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
             <Field label="Sintomas *" full>
               <textarea
                 value={form.symptoms}
@@ -1177,7 +1561,6 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
             <Field label="Acessórios" full>
               <input
                 value={form.accessories}
@@ -1186,7 +1569,6 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
             <Field label="Observações" full>
               <textarea
                 value={form.observations}
@@ -1200,7 +1582,6 @@ export function ServiceOrdersPage() {
         </div>
       </Modal>
 
-      {/* EDIT */}
       <Modal
         title="Editar Ordem de Serviço"
         isOpen={isEditOpen}
@@ -1221,24 +1602,19 @@ export function ServiceOrdersPage() {
 
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Dados do cliente</div>
-
           <FormGrid>
             <Field label="CPF/CNPJ na OS" full>
               <input value={form.clientCpfCnpj} disabled readOnly />
             </Field>
-
             <Field label="Nome" full>
               <input value={form.clientName} disabled readOnly />
             </Field>
-
             <Field label="Celular">
               <input value={form.clientPhone} disabled readOnly />
             </Field>
-
             <Field label="Email">
               <input value={form.clientEmail} disabled readOnly />
             </Field>
-
             <Field label="Endereço" full>
               <input value={form.clientAddress} disabled readOnly />
             </Field>
@@ -1247,32 +1623,16 @@ export function ServiceOrdersPage() {
 
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Dados do computador</div>
-
           <FormGrid>
             <Field label="Tipo do equipamento *">
-              <input
-                value={form.equipmentType}
-                onChange={(e) => setForm((p) => ({ ...p, equipmentType: e.target.value }))}
-                disabled={modalSaving}
-              />
+              <input value={form.equipmentType} onChange={(e) => setForm((p) => ({ ...p, equipmentType: e.target.value }))} disabled={modalSaving} />
             </Field>
-
             <Field label="Marca">
-              <input
-                value={form.equipmentBrand}
-                onChange={(e) => setForm((p) => ({ ...p, equipmentBrand: e.target.value }))}
-                disabled={modalSaving}
-              />
+              <input value={form.equipmentBrand} onChange={(e) => setForm((p) => ({ ...p, equipmentBrand: e.target.value }))} disabled={modalSaving} />
             </Field>
-
             <Field label="Modelo">
-              <input
-                value={form.equipmentModel}
-                onChange={(e) => setForm((p) => ({ ...p, equipmentModel: e.target.value }))}
-                disabled={modalSaving}
-              />
+              <input value={form.equipmentModel} onChange={(e) => setForm((p) => ({ ...p, equipmentModel: e.target.value }))} disabled={modalSaving} />
             </Field>
-
             <Field label="Nº de série">
               <input
                 value={form.equipmentSerialNumber}
@@ -1280,7 +1640,6 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
             <Field label="Senha do equipamento">
               <input
                 value={form.equipmentPassword}
@@ -1288,37 +1647,19 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
             <Field label="Sintomas *" full>
-              <textarea
-                value={form.symptoms}
-                onChange={(e) => setForm((p) => ({ ...p, symptoms: e.target.value }))}
-                rows={4}
-                disabled={modalSaving}
-              />
+              <textarea value={form.symptoms} onChange={(e) => setForm((p) => ({ ...p, symptoms: e.target.value }))} rows={4} disabled={modalSaving} />
             </Field>
-
             <Field label="Acessórios" full>
-              <input
-                value={form.accessories}
-                onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))}
-                disabled={modalSaving}
-              />
+              <input value={form.accessories} onChange={(e) => setForm((p) => ({ ...p, accessories: e.target.value }))} disabled={modalSaving} />
             </Field>
-
             <Field label="Observações" full>
-              <textarea
-                value={form.observations}
-                onChange={(e) => setForm((p) => ({ ...p, observations: e.target.value }))}
-                rows={3}
-                disabled={modalSaving}
-              />
+              <textarea value={form.observations} onChange={(e) => setForm((p) => ({ ...p, observations: e.target.value }))} rows={3} disabled={modalSaving} />
             </Field>
           </FormGrid>
         </div>
       </Modal>
 
-      {/* STATUS */}
       <Modal
         title="Alterar status"
         subtitle={selected ? `OS #${selected.osNumber} — status atual: ${STATUS_LABEL[selected.status]}` : ""}
@@ -1337,7 +1678,6 @@ export function ServiceOrdersPage() {
         }
       >
         {statusModalError ? <ModalError message={statusModalError} /> : null}
-
         {statusOptions.length === 0 ? (
           <Muted>Nenhuma transição de status disponível.</Muted>
         ) : (
@@ -1355,7 +1695,6 @@ export function ServiceOrdersPage() {
         )}
       </Modal>
 
-      {/* CANCEL */}
       <Modal
         title="Cancelar OS"
         subtitle={selected ? `Confirme o cancelamento da OS #${selected.osNumber}.` : ""}
@@ -1377,18 +1716,13 @@ export function ServiceOrdersPage() {
         <Muted>Você quer mesmo cancelar a OS #{selected?.osNumber}?</Muted>
       </Modal>
 
-      {/* DETAILS */}
       <Modal
         title="Detalhes da OS"
         subtitle={selected ? `OS #${selected.osNumber}` : ""}
         isOpen={isDetailsOpen}
         onClose={closeAllModals}
         disableClose={modalSaving}
-        footer={
-          <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
-            Fechar
-          </Button>
-        }
+        footer={<Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>Fechar</Button>}
       >
         {selected ? (
           <div style={{ display: "grid", gap: 10 }}>
@@ -1410,7 +1744,6 @@ export function ServiceOrdersPage() {
         )}
       </Modal>
 
-      {/* BUDGET EDITOR */}
       <Modal
         title="Orçamento"
         subtitle={selected ? `OS #${selected.osNumber} — ${STATUS_LABEL[selected.status]}` : ""}
@@ -1435,7 +1768,6 @@ export function ServiceOrdersPage() {
         ) : (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>Serviços e valores</div>
-
             <div style={{ display: "grid", gap: 10 }}>
               {budgetForm.items.map((it) => (
                 <div
@@ -1507,13 +1839,8 @@ export function ServiceOrdersPage() {
 
               <FormGrid>
                 <Field label="Deslocamento (R$)">
-                  <input
-                    value={budgetForm.travelFee}
-                    onChange={(e) => setBudgetForm((p) => ({ ...p, travelFee: e.target.value }))}
-                    disabled={modalSaving}
-                  />
+                  <input value={budgetForm.travelFee} onChange={(e) => setBudgetForm((p) => ({ ...p, travelFee: e.target.value }))} disabled={modalSaving} />
                 </Field>
-
                 <Field label="Serviço de terceiros (R$)">
                   <input
                     value={budgetForm.thirdPartyFee}
@@ -1521,22 +1848,11 @@ export function ServiceOrdersPage() {
                     disabled={modalSaving}
                   />
                 </Field>
-
                 <Field label="Desconto (R$)">
-                  <input
-                    value={budgetForm.discount}
-                    onChange={(e) => setBudgetForm((p) => ({ ...p, discount: e.target.value }))}
-                    disabled={modalSaving}
-                  />
+                  <input value={budgetForm.discount} onChange={(e) => setBudgetForm((p) => ({ ...p, discount: e.target.value }))} disabled={modalSaving} />
                 </Field>
-
                 <Field label="Observações" full>
-                  <textarea
-                    value={budgetForm.note}
-                    onChange={(e) => setBudgetForm((p) => ({ ...p, note: e.target.value }))}
-                    rows={3}
-                    disabled={modalSaving}
-                  />
+                  <textarea value={budgetForm.note} onChange={(e) => setBudgetForm((p) => ({ ...p, note: e.target.value }))} rows={3} disabled={modalSaving} />
                 </Field>
               </FormGrid>
             </div>
@@ -1544,7 +1860,6 @@ export function ServiceOrdersPage() {
         )}
       </Modal>
 
-      {/* PAYMENT */}
       <Modal
         title="Registrar pagamento"
         subtitle={selected ? `OS #${selected.osNumber} • ${STATUS_LABEL[selected.status]}` : ""}
@@ -1563,24 +1878,16 @@ export function ServiceOrdersPage() {
         }
       >
         {paymentModalError ? <ModalError message={paymentModalError} /> : null}
-
         {!selected ? (
           <Muted>Sem dados.</Muted>
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
             <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontWeight: 800 }}>Resumo da OS</div>
-              <div>
-                <strong>Cliente:</strong> {selected.client?.name || "-"}
-              </div>
-              <div>
-                <strong>Equipamento:</strong> {equipmentLabel(selected)}
-              </div>
-              <div>
-                <strong>Total do orçamento:</strong> {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
-              </div>
+              <div><strong>Cliente:</strong> {selected.client?.name || "-"}</div>
+              <div><strong>Equipamento:</strong> {equipmentLabel(selected)}</div>
+              <div><strong>Total do orçamento:</strong> {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}</div>
             </div>
-
             <FormGrid>
               <Field label="Tipo de pagamento *">
                 <select
@@ -1598,7 +1905,6 @@ export function ServiceOrdersPage() {
                   <option value="OUTRO">Outro</option>
                 </select>
               </Field>
-
               <Field label="Data do pagamento *">
                 <input
                   type="date"
@@ -1608,13 +1914,11 @@ export function ServiceOrdersPage() {
                 />
               </Field>
             </FormGrid>
-
             <Muted>Ao salvar, a OS será marcada como PAGO.</Muted>
           </div>
         )}
       </Modal>
 
-      {/* PICKUP */}
       <Modal
         title="Registrar retirada"
         subtitle={selected ? `OS #${selected.osNumber} • ${STATUS_LABEL[selected.status]}` : ""}
@@ -1633,24 +1937,16 @@ export function ServiceOrdersPage() {
         }
       >
         {pickupModalError ? <ModalError message={pickupModalError} /> : null}
-
         {!selected ? (
           <Muted>Sem dados.</Muted>
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
             <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontWeight: 800 }}>Resumo da OS</div>
-              <div>
-                <strong>Cliente:</strong> {selected.client?.name || "-"}
-              </div>
-              <div>
-                <strong>Tipo de pagamento:</strong> {selected.paymentType ? PAYMENT_TYPE_LABEL[selected.paymentType] : "-"}
-              </div>
-              <div>
-                <strong>Data do pagamento:</strong> {formatDateOnlyBR(selected.paymentDate)}
-              </div>
+              <div><strong>Cliente:</strong> {selected.client?.name || "-"}</div>
+              <div><strong>Tipo de pagamento:</strong> {selected.paymentType ? PAYMENT_TYPE_LABEL[selected.paymentType] : "-"}</div>
+              <div><strong>Data do pagamento:</strong> {formatDateOnlyBR(selected.paymentDate)}</div>
             </div>
-
             <FormGrid>
               <Field label="Data da retirada *">
                 <input
@@ -1661,13 +1957,11 @@ export function ServiceOrdersPage() {
                 />
               </Field>
             </FormGrid>
-
             <Muted>Ao salvar, a OS será marcada como ENTREGUE.</Muted>
           </div>
         )}
       </Modal>
 
-      {/* VIEW */}
       <Modal
         title="Visualizar"
         subtitle={
@@ -1681,455 +1975,358 @@ export function ServiceOrdersPage() {
         onClose={closeAllModals}
         disableClose={modalSaving}
         footer={
-          <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
-            Fechar
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                if (selected) printCurrentDocument(selected, viewMode);
+              }}
+              disabled={modalSaving || !selected}
+            >
+              Imprimir / PDF
+            </Button>
+            <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
+              Fechar
+            </Button>
+          </>
         }
       >
         {!selected ? (
           <Muted>Sem dados.</Muted>
         ) : viewMode === "ENTRY" ? (
           <div style={{ display: "grid", gap: 16 }}>
-  <div
-    style={{
-      display: "grid",
-      gap: 8,
-      paddingBottom: 10,
-      borderBottom: "1px solid rgba(0,0,0,0.08)",
-    }}
-  >
-    <div style={{ fontWeight: 800, fontSize: 18 }}>Comprovante de Entrada</div>
-    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-      <div>
-        <strong>Nº OS:</strong> {selected.osNumber}
-      </div>
-      <div>
-        <strong>Data de entrada:</strong> {formatDateTimeBR(selected.entryDate || selected.createdAt)}
-      </div>
-      <div>
-        <strong>Status:</strong> {STATUS_LABEL[selected.status]}
-      </div>
-    </div>
-  </div>
+            <div
+              style={{
+                display: "grid",
+                gap: 8,
+                paddingBottom: 10,
+                borderBottom: "1px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              <div style={{ fontWeight: 800, fontSize: 18 }}>Comprovante de Entrada</div>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                <div><strong>Nº OS:</strong> {selected.osNumber}</div>
+                <div><strong>Data de entrada:</strong> {formatDateTimeBR(selected.entryDate || selected.createdAt)}</div>
+                <div><strong>Status:</strong> {STATUS_LABEL[selected.status]}</div>
+              </div>
+            </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
-    <div>
-      <strong>Nome:</strong> {responsibleName(selected)}
-    </div>
-  </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+              <div><strong>Nome:</strong> {responsibleName(selected)}</div>
+            </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
-    <div>
-      <strong>Nome:</strong> {selected.client?.name || "-"}
-    </div>
-    <div>
-      <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
-    </div>
-    <div>
-      <strong>Telefone:</strong> {selected.client?.phone || "-"}
-    </div>
-    <div>
-      <strong>Email:</strong> {selected.client?.email || "-"}
-    </div>
-  </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
+              <div><strong>Nome:</strong> {selected.client?.name || "-"}</div>
+              <div><strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}</div>
+              <div><strong>Telefone:</strong> {selected.client?.phone || "-"}</div>
+              <div><strong>Email:</strong> {selected.client?.email || "-"}</div>
+            </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Dados do Equipamento</div>
-    <div>
-      <strong>Equipamento:</strong> {equipmentLabel(selected)}
-    </div>
-    <div>
-      <strong>Marca:</strong> {selected.equipmentBrand || "-"}
-    </div>
-    <div>
-      <strong>Modelo:</strong> {selected.equipmentModel || "-"}
-    </div>
-    <div>
-      <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
-    </div>
-    <div>
-      <strong>Senha:</strong> {selected.equipmentPassword || "-"}
-    </div>
-  </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Equipamento</div>
+              <div><strong>Equipamento:</strong> {equipmentLabel(selected)}</div>
+              <div><strong>Marca:</strong> {selected.equipmentBrand || "-"}</div>
+              <div><strong>Modelo:</strong> {selected.equipmentModel || "-"}</div>
+              <div><strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}</div>
+              <div><strong>Senha:</strong> {selected.equipmentPassword || "-"}</div>
+            </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Defeito / Reclamação</div>
-    <div style={{ whiteSpace: "pre-wrap" }}>{selected.symptoms || "-"}</div>
-  </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Defeito / Reclamação</div>
+              <div style={{ whiteSpace: "pre-wrap" }}>{selected.symptoms || "-"}</div>
+            </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Acessórios</div>
-    <div>{selected.accessories || "-"}</div>
-  </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Acessórios</div>
+              <div>{selected.accessories || "-"}</div>
+            </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Observações da OS</div>
-    <div style={{ whiteSpace: "pre-wrap" }}>{selected.observations || "-"}</div>
-  </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Observações da OS</div>
+              <div style={{ whiteSpace: "pre-wrap" }}>{selected.observations || "-"}</div>
+            </div>
 
-  <div
-    style={{
-      display: "grid",
-      gap: 8,
-      paddingTop: 10,
-      borderTop: "1px solid rgba(0,0,0,0.08)",
-    }}
-  >
-    <div style={{ fontWeight: 800 }}>Observações importantes</div>
-
-    <div style={{ display: "grid", gap: 4 }}>
-      {ENTRY_NOTES_TEXT.map((line) => (
-        <div key={line}>• {line}</div>
-      ))}
-    </div>
-  </div>
-</div>
+            <div
+              style={{
+                display: "grid",
+                gap: 8,
+                paddingTop: 10,
+                borderTop: "1px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              <div style={{ fontWeight: 800 }}>Observações importantes</div>
+              <div style={{ display: "grid", gap: 4 }}>
+                {ENTRY_NOTES_TEXT.map((line: string) => (
+                  <div key={line}>• {line}</div>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : viewMode === "BUDGET" ? (
           <div style={{ display: "grid", gap: 16 }}>
-  <div
-    style={{
-      display: "grid",
-      gap: 8,
-      paddingBottom: 10,
-      borderBottom: "1px solid rgba(0,0,0,0.08)",
-    }}
-  >
-    <div style={{ fontWeight: 800, fontSize: 18 }}>Orçamento da Ordem de Serviço</div>
-    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-      <div>
-        <strong>Nº OS:</strong> {selected.osNumber}
-      </div>
-      <div>
-        <strong>Entrada:</strong> {formatDateTimeBR(selected.entryDate || selected.createdAt)}
-      </div>
-      <div>
-        <strong>Status:</strong> {STATUS_LABEL[selected.status]}
-      </div>
-    </div>
-  </div>
-
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
-    <div>
-      <strong>Nome:</strong> {responsibleName(selected)}
-    </div>
-  </div>
-
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
-    <div>
-      <strong>Nome:</strong> {selected.client?.name || "-"}
-    </div>
-    <div>
-      <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
-    </div>
-    <div>
-      <strong>Telefone:</strong> {selected.client?.phone || "-"}
-    </div>
-    <div>
-      <strong>Email:</strong> {selected.client?.email || "-"}
-    </div>
-  </div>
-
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Dados do Equipamento</div>
-    <div>
-      <strong>Equipamento:</strong> {equipmentLabel(selected)}
-    </div>
-    <div>
-      <strong>Marca:</strong> {selected.equipmentBrand || "-"}
-    </div>
-    <div>
-      <strong>Modelo:</strong> {selected.equipmentModel || "-"}
-    </div>
-    <div>
-      <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
-    </div>
-  </div>
-
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Defeito / Reclamação</div>
-    <div style={{ whiteSpace: "pre-wrap" }}>{selected.symptoms || "-"}</div>
-  </div>
-
-  <div style={{ display: "grid", gap: 8 }}>
-    <div style={{ fontWeight: 800 }}>Serviços a executar</div>
-
-    {!selected.budget ? (
-      <Muted>Nenhum orçamento encontrado para esta OS.</Muted>
-    ) : selected.budget.items?.length ? (
-      <div style={{ display: "grid", gap: 8 }}>
-        {selected.budget.items.map((it) => {
-          const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
-
-          return (
             <div
-              key={it.id}
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr auto",
-                gap: 10,
-                borderBottom: "1px solid rgba(0,0,0,0.06)",
-                paddingBottom: 6,
+                gap: 8,
+                paddingBottom: 10,
+                borderBottom: "1px solid rgba(0,0,0,0.08)",
               }}
             >
-              <div>
-                <div style={{ fontWeight: 700 }}>{it.description}</div>
-                <div style={{ fontSize: 12, color: "#667085" }}>
-                  Técnico responsável: {it.technician || "-"} • Qtd: {it.qty}
-                </div>
+              <div style={{ fontWeight: 800, fontSize: 18 }}>Orçamento da Ordem de Serviço</div>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                <div><strong>Nº OS:</strong> {selected.osNumber}</div>
+                <div><strong>Entrada:</strong> {formatDateTimeBR(selected.entryDate || selected.createdAt)}</div>
+                <div><strong>Status:</strong> {STATUS_LABEL[selected.status]}</div>
               </div>
-              <div style={{ fontWeight: 800 }}>R$ {lineTotal.toFixed(2)}</div>
             </div>
-          );
-        })}
-      </div>
-    ) : (
-      <Muted>Nenhum serviço adicionado ainda.</Muted>
-    )}
-  </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Totais do Orçamento</div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+              <div><strong>Nome:</strong> {responsibleName(selected)}</div>
+            </div>
 
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>Subtotal (serviços)</span>
-      <strong>
-        R$ {selected.budget ? calcBudgetItemsTotal(selected.budget.items).toFixed(2) : "0.00"}
-      </strong>
-    </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
+              <div><strong>Nome:</strong> {selected.client?.name || "-"}</div>
+              <div><strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}</div>
+              <div><strong>Telefone:</strong> {selected.client?.phone || "-"}</div>
+              <div><strong>Email:</strong> {selected.client?.email || "-"}</div>
+            </div>
 
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>Deslocamento</span>
-      <strong>
-        R$ {selected.budget ? toMoneyNumber(selected.budget.travelFee).toFixed(2) : "0.00"}
-      </strong>
-    </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Equipamento</div>
+              <div><strong>Equipamento:</strong> {equipmentLabel(selected)}</div>
+              <div><strong>Marca:</strong> {selected.equipmentBrand || "-"}</div>
+              <div><strong>Modelo:</strong> {selected.equipmentModel || "-"}</div>
+              <div><strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}</div>
+            </div>
 
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>Serviço de terceiros</span>
-      <strong>
-        R$ {selected.budget ? toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2) : "0.00"}
-      </strong>
-    </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Defeito / Reclamação</div>
+              <div style={{ whiteSpace: "pre-wrap" }}>{selected.symptoms || "-"}</div>
+            </div>
 
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>Desconto</span>
-      <strong>
-        - R$ {selected.budget ? toMoneyNumber(selected.budget.discount).toFixed(2) : "0.00"}
-      </strong>
-    </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontWeight: 800 }}>Serviços a executar</div>
+              {!selected.budget ? (
+                <Muted>Nenhum orçamento encontrado para esta OS.</Muted>
+              ) : selected.budget.items?.length ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {selected.budget.items.map((it) => {
+                    const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
 
-    <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
+                    return (
+                      <div
+                        key={it.id}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          gap: 10,
+                          borderBottom: "1px solid rgba(0,0,0,0.06)",
+                          paddingBottom: 6,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{it.description}</div>
+                          <div style={{ fontSize: 12, color: "#667085" }}>
+                            Técnico responsável: {it.technician || "-"} • Qtd: {it.qty}
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: 800 }}>R$ {lineTotal.toFixed(2)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Muted>Nenhum serviço adicionado ainda.</Muted>
+              )}
+            </div>
 
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16 }}>
-      <span style={{ fontWeight: 800 }}>Total</span>
-      <span style={{ fontWeight: 900 }}>
-        {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
-      </span>
-    </div>
-  </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Totais do Orçamento</div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Subtotal (serviços)</span>
+                <strong>R$ {selected.budget ? calcBudgetItemsTotal(selected.budget.items).toFixed(2) : "0.00"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Deslocamento</span>
+                <strong>R$ {selected.budget ? toMoneyNumber(selected.budget.travelFee).toFixed(2) : "0.00"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Serviço de terceiros</span>
+                <strong>R$ {selected.budget ? toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2) : "0.00"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Desconto</span>
+                <strong>- R$ {selected.budget ? toMoneyNumber(selected.budget.discount).toFixed(2) : "0.00"}</strong>
+              </div>
+              <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16 }}>
+                <span style={{ fontWeight: 800 }}>Total</span>
+                <span style={{ fontWeight: 900 }}>
+                  {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
+                </span>
+              </div>
+            </div>
 
-  <div
-    style={{
-      display: "grid",
-      gap: 8,
-      paddingTop: 10,
-      borderTop: "1px solid rgba(0,0,0,0.08)",
-    }}
-  >
-    <div style={{ fontWeight: 800 }}>Condições de pagamento</div>
-    <div>{BUDGET_PAYMENT_CONDITIONS_TEXT}</div>
-  </div>
+            <div
+              style={{
+                display: "grid",
+                gap: 8,
+                paddingTop: 10,
+                borderTop: "1px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              <div style={{ fontWeight: 800 }}>Condições de pagamento</div>
+              <div>{BUDGET_PAYMENT_CONDITIONS_TEXT}</div>
+            </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Validade</div>
-    <div>{BUDGET_VALIDITY_TEXT}</div>
-  </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Validade</div>
+              <div>{BUDGET_VALIDITY_TEXT}</div>
+            </div>
 
-  {selected.budget?.note && (
-    <div style={{ display: "grid", gap: 6 }}>
-      <div style={{ fontWeight: 800 }}>Observações do orçamento</div>
-      <div style={{ whiteSpace: "pre-wrap" }}>{selected.budget.note}</div>
-    </div>
-  )}
-</div>
+            {selected.budget?.note && (
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ fontWeight: 800 }}>Observações do orçamento</div>
+                <div style={{ whiteSpace: "pre-wrap" }}>{selected.budget.note}</div>
+              </div>
+            )}
+          </div>
         ) : (
           <div style={{ display: "grid", gap: 16 }}>
-  <div
-    style={{
-      display: "grid",
-      gap: 8,
-      paddingBottom: 10,
-      borderBottom: "1px solid rgba(0,0,0,0.08)",
-    }}
-  >
-    <div style={{ fontWeight: 800, fontSize: 18 }}>Comprovante de Pagamento</div>
-    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-      <div>
-        <strong>Nº OS:</strong> {selected.osNumber}
-      </div>
-      <div>
-        <strong>Data de entrada:</strong> {formatDateTimeBR(selected.entryDate || selected.createdAt)}
-      </div>
-      <div>
-        <strong>Status:</strong> {STATUS_LABEL[selected.status]}
-      </div>
-    </div>
-  </div>
-
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
-    <div>
-      <strong>Nome:</strong> {responsibleName(selected)}
-    </div>
-  </div>
-
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
-    <div>
-      <strong>Nome:</strong> {selected.client?.name || "-"}
-    </div>
-    <div>
-      <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
-    </div>
-    <div>
-      <strong>Telefone:</strong> {selected.client?.phone || "-"}
-    </div>
-    <div>
-      <strong>Email:</strong> {selected.client?.email || "-"}
-    </div>
-  </div>
-
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Dados do Equipamento</div>
-    <div>
-      <strong>Equipamento:</strong> {equipmentLabel(selected)}
-    </div>
-    <div>
-      <strong>Marca:</strong> {selected.equipmentBrand || "-"}
-    </div>
-    <div>
-      <strong>Modelo:</strong> {selected.equipmentModel || "-"}
-    </div>
-    <div>
-      <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
-    </div>
-  </div>
-
-  <div style={{ display: "grid", gap: 8 }}>
-    <div style={{ fontWeight: 800 }}>Serviços executados</div>
-
-    {selected.budget?.items?.length ? (
-      <div style={{ display: "grid", gap: 8 }}>
-        {selected.budget.items.map((it) => {
-          const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
-
-          return (
             <div
-              key={it.id}
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr auto",
-                gap: 10,
-                borderBottom: "1px solid rgba(0,0,0,0.06)",
-                paddingBottom: 6,
+                gap: 8,
+                paddingBottom: 10,
+                borderBottom: "1px solid rgba(0,0,0,0.08)",
               }}
             >
-              <div>
-                <div style={{ fontWeight: 700 }}>{it.description}</div>
-                <div style={{ fontSize: 12, color: "#667085" }}>
-                  Técnico responsável: {it.technician || "-"} • Qtd: {it.qty}
-                </div>
+              <div style={{ fontWeight: 800, fontSize: 18 }}>Comprovante de Pagamento</div>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                <div><strong>Nº OS:</strong> {selected.osNumber}</div>
+                <div><strong>Data de entrada:</strong> {formatDateTimeBR(selected.entryDate || selected.createdAt)}</div>
+                <div><strong>Status:</strong> {STATUS_LABEL[selected.status]}</div>
               </div>
-              <div style={{ fontWeight: 800 }}>R$ {lineTotal.toFixed(2)}</div>
             </div>
-          );
-        })}
-      </div>
-    ) : (
-      <Muted>Nenhum serviço registrado no orçamento.</Muted>
-    )}
-  </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Pagamento e retirada</div>
-    <div>
-      <strong>Tipo de pagamento:</strong>{" "}
-      {selected.paymentType ? PAYMENT_TYPE_LABEL[selected.paymentType] : "-"}
-    </div>
-    <div>
-      <strong>Data do pagamento:</strong> {formatDateOnlyBR(selected.paymentDate)}
-    </div>
-    <div>
-      <strong>Data da retirada:</strong> {formatDateOnlyBR(selected.pickupDate)}
-    </div>
-  </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+              <div><strong>Nome:</strong> {responsibleName(selected)}</div>
+            </div>
 
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Totais</div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
+              <div><strong>Nome:</strong> {selected.client?.name || "-"}</div>
+              <div><strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}</div>
+              <div><strong>Telefone:</strong> {selected.client?.phone || "-"}</div>
+              <div><strong>Email:</strong> {selected.client?.email || "-"}</div>
+            </div>
 
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>Subtotal (serviços)</span>
-      <strong>
-        R$ {selected.budget ? calcBudgetItemsTotal(selected.budget.items).toFixed(2) : "0.00"}
-      </strong>
-    </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Dados do Equipamento</div>
+              <div><strong>Equipamento:</strong> {equipmentLabel(selected)}</div>
+              <div><strong>Marca:</strong> {selected.equipmentBrand || "-"}</div>
+              <div><strong>Modelo:</strong> {selected.equipmentModel || "-"}</div>
+              <div><strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}</div>
+            </div>
 
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>Deslocamento</span>
-      <strong>
-        R$ {selected.budget ? toMoneyNumber(selected.budget.travelFee).toFixed(2) : "0.00"}
-      </strong>
-    </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontWeight: 800 }}>Serviços executados</div>
+              {selected.budget?.items?.length ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {selected.budget.items.map((it) => {
+                    const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
 
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>Serviço de terceiros</span>
-      <strong>
-        R$ {selected.budget ? toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2) : "0.00"}
-      </strong>
-    </div>
+                    return (
+                      <div
+                        key={it.id}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          gap: 10,
+                          borderBottom: "1px solid rgba(0,0,0,0.06)",
+                          paddingBottom: 6,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{it.description}</div>
+                          <div style={{ fontSize: 12, color: "#667085" }}>
+                            Técnico responsável: {it.technician || "-"} • Qtd: {it.qty}
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: 800 }}>R$ {lineTotal.toFixed(2)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Muted>Nenhum serviço registrado no orçamento.</Muted>
+              )}
+            </div>
 
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>Desconto</span>
-      <strong>
-        - R$ {selected.budget ? toMoneyNumber(selected.budget.discount).toFixed(2) : "0.00"}
-      </strong>
-    </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Pagamento e retirada</div>
+              <div>
+                <strong>Tipo de pagamento:</strong>{" "}
+                {selected.paymentType ? PAYMENT_TYPE_LABEL[selected.paymentType] : "-"}
+              </div>
+              <div><strong>Data do pagamento:</strong> {formatDateOnlyBR(selected.paymentDate)}</div>
+              <div><strong>Data da retirada:</strong> {formatDateOnlyBR(selected.pickupDate)}</div>
+            </div>
 
-    <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Totais</div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Subtotal (serviços)</span>
+                <strong>R$ {selected.budget ? calcBudgetItemsTotal(selected.budget.items).toFixed(2) : "0.00"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Deslocamento</span>
+                <strong>R$ {selected.budget ? toMoneyNumber(selected.budget.travelFee).toFixed(2) : "0.00"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Serviço de terceiros</span>
+                <strong>R$ {selected.budget ? toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2) : "0.00"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Desconto</span>
+                <strong>- R$ {selected.budget ? toMoneyNumber(selected.budget.discount).toFixed(2) : "0.00"}</strong>
+              </div>
+              <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16 }}>
+                <span style={{ fontWeight: 800 }}>Total</span>
+                <span style={{ fontWeight: 900 }}>
+                  {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
+                </span>
+              </div>
+            </div>
 
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16 }}>
-      <span style={{ fontWeight: 800 }}>Total</span>
-      <span style={{ fontWeight: 900 }}>
-        {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
-      </span>
-    </div>
-  </div>
+            <div
+              style={{
+                display: "grid",
+                gap: 8,
+                paddingTop: 10,
+                borderTop: "1px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              <div style={{ fontWeight: 800 }}>Garantia</div>
+              <div style={{ display: "grid", gap: 4 }}>
+                {WARRANTY_TEXT.map((line) => (
+                  <div key={line}>• {line}</div>
+                ))}
+              </div>
+            </div>
 
-  <div
-    style={{
-      display: "grid",
-      gap: 8,
-      paddingTop: 10,
-      borderTop: "1px solid rgba(0,0,0,0.08)",
-    }}
-  >
-    <div style={{ fontWeight: 800 }}>Garantia</div>
-    <div style={{ display: "grid", gap: 4 }}>
-      {WARRANTY_TEXT.map((line) => (
-        <div key={line}>• {line}</div>
-      ))}
-    </div>
-  </div>
-
-  <div style={{ display: "grid", gap: 6 }}>
-    <div style={{ fontWeight: 800 }}>Declaração de recebimento</div>
-    <div>{PAYMENT_RECEIPT_DECLARATION_TEXT}</div>
-  </div>
-</div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Declaração de recebimento</div>
+              <div>{PAYMENT_RECEIPT_DECLARATION_TEXT}</div>
+            </div>
+          </div>
         )}
       </Modal>
     </section>
