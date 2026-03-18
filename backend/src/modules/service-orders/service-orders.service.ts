@@ -7,7 +7,15 @@ import type {
 } from "./service-orders.schemas";
 import { BudgetsService } from "./budgets.service";
 
-const FLOW = ["ABERTA", "EM_ANALISE", "AGUARDANDO_APROVACAO", "EM_MANUTENCAO", "FINALIZADA", "ENTREGUE"] as const;
+const FLOW = [
+  "ABERTA",
+  "EM_ANALISE",
+  "AGUARDANDO_APROVACAO",
+  "EM_MANUTENCAO",
+  "FINALIZADA",
+  "PAGO",
+  "ENTREGUE",
+] as const;
 
 function indexInFlow(s: string) {
   return FLOW.indexOf(s as any);
@@ -69,10 +77,6 @@ export class ServiceOrdersService {
 
         budgetValue: input.budgetValue ?? null,
         finalValue: input.finalValue ?? null,
-
-        paymentType: input.paymentType ?? null,
-        paymentDate: input.paymentDate ?? null,
-        pickupDate: input.pickupDate ?? null,
       },
       include: serviceOrderInclude,
     });
@@ -142,7 +146,13 @@ export class ServiceOrdersService {
   async updateStatus(id: string, input: UpdateServiceOrderStatusInput) {
     const order = await prisma.serviceOrder.findUnique({
       where: { id },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        paymentType: true,
+        paymentDate: true,
+        pickupDate: true,
+      },
     });
 
     if (!order) {
@@ -172,6 +182,22 @@ export class ServiceOrdersService {
     } else {
       if (!isForwardNext(current, next)) {
         throw HttpError.badRequest("Transição de status inválida. Não é permitido voltar ou pular etapas.");
+      }
+    }
+
+    if (next === "PAGO") {
+      if (!order.paymentType || !order.paymentDate) {
+        throw HttpError.badRequest("Antes de marcar a OS como paga, registre o tipo e a data do pagamento.");
+      }
+    }
+
+    if (next === "ENTREGUE") {
+      if (!order.paymentType || !order.paymentDate) {
+        throw HttpError.badRequest("Antes de marcar a OS como entregue, registre o pagamento.");
+      }
+
+      if (!order.pickupDate) {
+        throw HttpError.badRequest("Antes de marcar a OS como entregue, registre a data da retirada.");
       }
     }
 

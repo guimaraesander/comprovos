@@ -35,6 +35,7 @@ export const serviceOrderStatusSchema = z.enum([
   "AGUARDANDO_APROVACAO",
   "EM_MANUTENCAO",
   "FINALIZADA",
+  "PAGO",
   "ENTREGUE",
   "CANCELADA",
 ]);
@@ -65,10 +66,6 @@ export const createServiceOrderSchema = z.object({
 
   budgetValue: toOptionalNumber,
   finalValue: toOptionalNumber,
-
-  paymentType: paymentTypeSchema.optional(),
-  paymentDate: toOptionalDate,
-  pickupDate: toOptionalDate,
 });
 
 export const updateServiceOrderSchema = z.object({

@@ -6,6 +6,7 @@ export type ServiceOrderStatus =
   | "AGUARDANDO_APROVACAO"
   | "EM_MANUTENCAO"
   | "FINALIZADA"
+  | "PAGO"
   | "ENTREGUE"
   | "CANCELADA";
 
@@ -103,9 +104,6 @@ export type CreateServiceOrderInput = {
   symptoms: string;
   accessories?: string;
   observations?: string;
-  paymentType?: PaymentType;
-  paymentDate?: string;
-  pickupDate?: string;
 };
 
 export type UpdateServiceOrderInput = {

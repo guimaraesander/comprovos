@@ -62,6 +62,7 @@ const STATUS_LABEL: Record<ServiceOrderStatus, string> = {
   AGUARDANDO_APROVACAO: "AGUARD. APROVAÇÃO",
   EM_MANUTENCAO: "EM MANUTENÇÃO",
   FINALIZADA: "FINALIZADA",
+  PAGO: "PAGO",
   ENTREGUE: "ENTREGUE",
   CANCELADA: "CANCELADA",
 };
@@ -82,13 +83,27 @@ const WARRANTY_TEXT = [
   "A garantia não cobre danos causados pelo usuário, como quedas, trincos na tela, derramamento de líquido ou vírus.",
 ] as const;
 
-// fluxo “pra frente” (não pode voltar)
+const ENTRY_NOTES_TEXT = [
+  "Prazo para orçamento em até 10 dias úteis.",
+  "Equipamentos concluídos devem ser retirados após aviso da assistência.",
+  "Acessórios só ficam sob responsabilidade da assistência quando registrados na OS.",
+] as const;
+
+const BUDGET_PAYMENT_CONDITIONS_TEXT =
+  "Consulte condições de parcelamento no cartão e possíveis descontos para pagamento em PIX ou dinheiro.";
+
+const BUDGET_VALIDITY_TEXT = "Orçamento válido por 10 dias.";
+
+const PAYMENT_RECEIPT_DECLARATION_TEXT =
+  "Declaro estar recebendo o equipamento e os materiais constantes nesta Ordem de Serviço devidamente reparados.";
+
 const STATUS_FLOW: ServiceOrderStatus[] = [
   "ABERTA",
   "EM_ANALISE",
   "AGUARDANDO_APROVACAO",
   "EM_MANUTENCAO",
   "FINALIZADA",
+  "PAGO",
   "ENTREGUE",
   "CANCELADA",
 ];
@@ -111,9 +126,6 @@ type FormState = {
   symptoms: string;
   accessories: string;
   observations: string;
-  paymentType: PaymentType | "";
-  paymentDate: string;
-  pickupDate: string;
 };
 
 const initialForm: FormState = {
@@ -134,6 +146,15 @@ const initialForm: FormState = {
   symptoms: "",
   accessories: "",
   observations: "",
+};
+
+type PaymentForm = {
+  paymentType: PaymentType | "";
+  paymentDate: string;
+  pickupDate: string;
+};
+
+const initialPaymentForm: PaymentForm = {
   paymentType: "",
   paymentDate: "",
   pickupDate: "",
@@ -208,6 +229,7 @@ function statusBadgeStyle(status: ServiceOrderStatus): React.CSSProperties {
 
   if (status === "CANCELADA") return { ...base, background: "#fee4e2", color: "#b42318", borderColor: "#fecdca" };
   if (status === "ENTREGUE") return { ...base, background: "#d1fadf", color: "#067647", borderColor: "#a6f4c5" };
+  if (status === "PAGO") return { ...base, background: "#ecfdf3", color: "#027a48", borderColor: "#abefc6" };
   if (status === "FINALIZADA") return { ...base, background: "#e0eaff", color: "#175cd3", borderColor: "#c7d7fe" };
   if (status === "EM_MANUTENCAO") return { ...base, background: "#fffaeb", color: "#b54708", borderColor: "#fedf89" };
   if (status === "AGUARDANDO_APROVACAO") {
@@ -290,6 +312,7 @@ function buttonsMode(status: ServiceOrderStatus) {
   const onlyView =
     status === "EM_MANUTENCAO" ||
     status === "FINALIZADA" ||
+    status === "PAGO" ||
     status === "ENTREGUE" ||
     status === "CANCELADA";
 
@@ -299,13 +322,13 @@ function buttonsMode(status: ServiceOrderStatus) {
 type ViewMode = "ENTRY" | "BUDGET" | "PAYMENT";
 
 function getViewMode(status: ServiceOrderStatus): ViewMode {
-  if (status === "ENTREGUE") return "PAYMENT";
+  if (status === "PAGO" || status === "ENTREGUE") return "PAYMENT";
   if (status === "AGUARDANDO_APROVACAO" || status === "EM_MANUTENCAO" || status === "FINALIZADA") return "BUDGET";
   return "ENTRY";
 }
 
 function nextStatusesAllowed(current: ServiceOrderStatus): ServiceOrderStatus[] {
-  if (current === "CANCELADA" || current === "ENTREGUE") return [];
+  if (current === "FINALIZADA" || current === "PAGO" || current === "CANCELADA" || current === "ENTREGUE") return [];
 
   const idx = STATUS_FLOW.indexOf(current);
   if (idx < 0) return [];
@@ -349,8 +372,11 @@ export function ServiceOrdersPage() {
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isBudgetOpen, setIsBudgetOpen] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isPickupOpen, setIsPickupOpen] = useState(false);
 
   const [budgetForm, setBudgetForm] = useState<BudgetForm>(initialBudgetForm);
+  const [paymentForm, setPaymentForm] = useState<PaymentForm>(initialPaymentForm);
   const [modalSaving, setModalSaving] = useState(false);
 
   const [selected, setSelected] = useState<ServiceOrder | null>(null);
@@ -363,6 +389,8 @@ export function ServiceOrdersPage() {
   const [statusModalError, setStatusModalError] = useState<string | null>(null);
   const [cancelModalError, setCancelModalError] = useState<string | null>(null);
   const [budgetModalError, setBudgetModalError] = useState<string | null>(null);
+  const [paymentModalError, setPaymentModalError] = useState<string | null>(null);
+  const [pickupModalError, setPickupModalError] = useState<string | null>(null);
 
   const [cpfQuery, setCpfQuery] = useState("");
   const [cpfOpen, setCpfOpen] = useState(false);
@@ -458,6 +486,8 @@ export function ServiceOrdersPage() {
     setIsCancelOpen(false);
     setIsViewOpen(false);
     setIsBudgetOpen(false);
+    setIsPaymentOpen(false);
+    setIsPickupOpen(false);
     setCpfOpen(false);
 
     setCreateModalError(null);
@@ -465,6 +495,8 @@ export function ServiceOrdersPage() {
     setStatusModalError(null);
     setCancelModalError(null);
     setBudgetModalError(null);
+    setPaymentModalError(null);
+    setPickupModalError(null);
   }
 
   function applyClientSelection(c: Client) {
@@ -524,9 +556,6 @@ export function ServiceOrdersPage() {
         symptoms,
         accessories: normalizeText(form.accessories) || undefined,
         observations: normalizeText(form.observations) || undefined,
-        paymentType: form.paymentType || undefined,
-        paymentDate: form.paymentDate || undefined,
-        pickupDate: form.pickupDate || undefined,
       });
 
       setOrders((prev) => [created, ...prev]);
@@ -559,9 +588,6 @@ export function ServiceOrdersPage() {
       symptoms: order.symptoms || "",
       accessories: order.accessories ?? "",
       observations: order.observations ?? "",
-      paymentType: order.paymentType ?? "",
-      paymentDate: formatDateInput(order.paymentDate),
-      pickupDate: formatDateInput(order.pickupDate),
     });
 
     setCpfQuery(order.clientCpfCnpj || "");
@@ -599,9 +625,6 @@ export function ServiceOrdersPage() {
         symptoms,
         accessories: normalizeText(form.accessories) || null,
         observations: normalizeText(form.observations) || null,
-        paymentType: form.paymentType || null,
-        paymentDate: form.paymentDate || null,
-        pickupDate: form.pickupDate || null,
       });
 
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
@@ -701,6 +724,96 @@ export function ServiceOrdersPage() {
     setIsBudgetOpen(true);
   }
 
+  function openPayment(order: ServiceOrder) {
+    setSelected(order);
+    setPaymentModalError(null);
+    setPaymentForm({
+      paymentType: order.paymentType ?? "",
+      paymentDate: formatDateInput(order.paymentDate),
+      pickupDate: formatDateInput(order.pickupDate),
+    });
+    setIsPaymentOpen(true);
+  }
+
+  function openPickup(order: ServiceOrder) {
+    setSelected(order);
+    setPickupModalError(null);
+    setPaymentForm({
+      paymentType: order.paymentType ?? "",
+      paymentDate: formatDateInput(order.paymentDate),
+      pickupDate: formatDateInput(order.pickupDate),
+    });
+    setIsPickupOpen(true);
+  }
+
+  async function handleSavePayment() {
+    if (!selected) return;
+
+    setPaymentModalError(null);
+
+    if (!paymentForm.paymentType) {
+      return setPaymentModalError("Selecione o tipo de pagamento.");
+    }
+
+    if (!paymentForm.paymentDate) {
+      return setPaymentModalError("Informe a data do pagamento.");
+    }
+
+    setModalSaving(true);
+    setBusy(selected.id, true);
+
+    try {
+      await updateServiceOrder(selected.id, {
+        paymentType: paymentForm.paymentType,
+        paymentDate: paymentForm.paymentDate,
+      });
+
+      const finalOrder =
+        selected.status === "FINALIZADA"
+          ? await updateServiceOrderStatus(selected.id, { status: "PAGO" })
+          : await updateServiceOrder(selected.id, {
+              paymentType: paymentForm.paymentType,
+              paymentDate: paymentForm.paymentDate,
+            });
+
+      setOrders((prev) => prev.map((o) => (o.id === finalOrder.id ? finalOrder : o)));
+      closeAllModals();
+    } catch (err) {
+      setPaymentModalError(safeErrorMessage(err));
+    } finally {
+      setBusy(selected.id, false);
+      setModalSaving(false);
+    }
+  }
+
+  async function handleSavePickup() {
+    if (!selected) return;
+
+    setPickupModalError(null);
+
+    if (!paymentForm.pickupDate) {
+      return setPickupModalError("Informe a data da retirada.");
+    }
+
+    setModalSaving(true);
+    setBusy(selected.id, true);
+
+    try {
+      await updateServiceOrder(selected.id, {
+        pickupDate: paymentForm.pickupDate,
+      });
+
+      const finalOrder = await updateServiceOrderStatus(selected.id, { status: "ENTREGUE" });
+      setOrders((prev) => prev.map((o) => (o.id === finalOrder.id ? finalOrder : o)));
+      closeAllModals();
+    } catch (err) {
+      setPickupModalError(safeErrorMessage(err));
+    } finally {
+      setBusy(selected.id, false);
+      setModalSaving(false);
+    }
+  }
+
   function addBudgetItem() {
     setBudgetForm((p) => ({
       ...p,
@@ -781,7 +894,7 @@ export function ServiceOrdersPage() {
                 <th>CPF/CNPJ</th>
                 <th>Equipamento</th>
                 <th>Sintomas</th>
-                <th style={{ width: 300 }}>Ações</th>
+                <th style={{ width: 420 }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -807,12 +920,21 @@ export function ServiceOrdersPage() {
                         <button
                           type="button"
                           onClick={() => openStatus(o)}
-                          disabled={rowBusy || o.status === "CANCELADA" || o.status === "ENTREGUE"}
+                          disabled={
+                            rowBusy ||
+                            o.status === "FINALIZADA" ||
+                            o.status === "PAGO" ||
+                            o.status === "CANCELADA" ||
+                            o.status === "ENTREGUE"
+                          }
                           title={
                             rowBusy
                               ? "Aguarde..."
-                              : o.status === "CANCELADA" || o.status === "ENTREGUE"
-                              ? "Não é possível alterar o status."
+                              : o.status === "FINALIZADA" ||
+                                o.status === "PAGO" ||
+                                o.status === "CANCELADA" ||
+                                o.status === "ENTREGUE"
+                              ? "Use as ações próprias do fluxo para concluir a OS."
                               : "Clique para alterar o status"
                           }
                           style={{
@@ -870,6 +992,30 @@ export function ServiceOrdersPage() {
                           >
                             {editIsBudget ? "Orçamento" : "Editar"}
                           </Button>
+
+                          {o.status === "FINALIZADA" && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => openPayment(o)}
+                              disabled={rowBusy}
+                              title="Registrar pagamento"
+                            >
+                              Pagamento
+                            </Button>
+                          )}
+
+                          {o.status === "PAGO" && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => openPickup(o)}
+                              disabled={rowBusy}
+                              title="Registrar retirada"
+                            >
+                              Retirar
+                            </Button>
+                          )}
 
                           <Button
                             type="button"
@@ -1050,46 +1196,11 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
-            <Field label="Tipo de pagamento">
-              <select
-                value={form.paymentType}
-                onChange={(e) => setForm((p) => ({ ...p, paymentType: e.target.value as PaymentType | "" }))}
-                disabled={modalSaving}
-              >
-                <option value="">Selecione</option>
-                <option value="PIX">PIX</option>
-                <option value="DINHEIRO">Dinheiro</option>
-                <option value="CARTAO_CREDITO">Cartão de crédito</option>
-                <option value="CARTAO_DEBITO">Cartão de débito</option>
-                <option value="TRANSFERENCIA">Transferência</option>
-                <option value="BOLETO">Boleto</option>
-                <option value="OUTRO">Outro</option>
-              </select>
-            </Field>
-
-            <Field label="Data do pagamento">
-              <input
-                type="date"
-                value={form.paymentDate}
-                onChange={(e) => setForm((p) => ({ ...p, paymentDate: e.target.value }))}
-                disabled={modalSaving}
-              />
-            </Field>
-
-            <Field label="Data da retirada">
-              <input
-                type="date"
-                value={form.pickupDate}
-                onChange={(e) => setForm((p) => ({ ...p, pickupDate: e.target.value }))}
-                disabled={modalSaving}
-              />
-            </Field>
           </FormGrid>
         </div>
       </Modal>
 
-      {/* EDIT (entrada) */}
+      {/* EDIT */}
       <Modal
         title="Editar Ordem de Serviço"
         isOpen={isEditOpen}
@@ -1203,46 +1314,11 @@ export function ServiceOrdersPage() {
                 disabled={modalSaving}
               />
             </Field>
-
-            <Field label="Tipo de pagamento">
-              <select
-                value={form.paymentType}
-                onChange={(e) => setForm((p) => ({ ...p, paymentType: e.target.value as PaymentType | "" }))}
-                disabled={modalSaving}
-              >
-                <option value="">Selecione</option>
-                <option value="PIX">PIX</option>
-                <option value="DINHEIRO">Dinheiro</option>
-                <option value="CARTAO_CREDITO">Cartão de crédito</option>
-                <option value="CARTAO_DEBITO">Cartão de débito</option>
-                <option value="TRANSFERENCIA">Transferência</option>
-                <option value="BOLETO">Boleto</option>
-                <option value="OUTRO">Outro</option>
-              </select>
-            </Field>
-
-            <Field label="Data do pagamento">
-              <input
-                type="date"
-                value={form.paymentDate}
-                onChange={(e) => setForm((p) => ({ ...p, paymentDate: e.target.value }))}
-                disabled={modalSaving}
-              />
-            </Field>
-
-            <Field label="Data da retirada">
-              <input
-                type="date"
-                value={form.pickupDate}
-                onChange={(e) => setForm((p) => ({ ...p, pickupDate: e.target.value }))}
-                disabled={modalSaving}
-              />
-            </Field>
           </FormGrid>
         </div>
       </Modal>
 
-      {/* STATUS (somente próximos) */}
+      {/* STATUS */}
       <Modal
         title="Alterar status"
         subtitle={selected ? `OS #${selected.osNumber} — status atual: ${STATUS_LABEL[selected.status]}` : ""}
@@ -1468,6 +1544,129 @@ export function ServiceOrdersPage() {
         )}
       </Modal>
 
+      {/* PAYMENT */}
+      <Modal
+        title="Registrar pagamento"
+        subtitle={selected ? `OS #${selected.osNumber} • ${STATUS_LABEL[selected.status]}` : ""}
+        isOpen={isPaymentOpen}
+        onClose={closeAllModals}
+        disableClose={modalSaving}
+        footer={
+          <>
+            <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
+              Cancelar
+            </Button>
+            <Button type="button" variant="primary" onClick={handleSavePayment} disabled={modalSaving}>
+              {modalSaving ? "Salvando..." : "Registrar pagamento"}
+            </Button>
+          </>
+        }
+      >
+        {paymentModalError ? <ModalError message={paymentModalError} /> : null}
+
+        {!selected ? (
+          <Muted>Sem dados.</Muted>
+        ) : (
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Resumo da OS</div>
+              <div>
+                <strong>Cliente:</strong> {selected.client?.name || "-"}
+              </div>
+              <div>
+                <strong>Equipamento:</strong> {equipmentLabel(selected)}
+              </div>
+              <div>
+                <strong>Total do orçamento:</strong> {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
+              </div>
+            </div>
+
+            <FormGrid>
+              <Field label="Tipo de pagamento *">
+                <select
+                  value={paymentForm.paymentType}
+                  onChange={(e) => setPaymentForm((prev) => ({ ...prev, paymentType: e.target.value as PaymentType | "" }))}
+                  disabled={modalSaving}
+                >
+                  <option value="">Selecione</option>
+                  <option value="PIX">PIX</option>
+                  <option value="DINHEIRO">Dinheiro</option>
+                  <option value="CARTAO_CREDITO">Cartão de crédito</option>
+                  <option value="CARTAO_DEBITO">Cartão de débito</option>
+                  <option value="TRANSFERENCIA">Transferência</option>
+                  <option value="BOLETO">Boleto</option>
+                  <option value="OUTRO">Outro</option>
+                </select>
+              </Field>
+
+              <Field label="Data do pagamento *">
+                <input
+                  type="date"
+                  value={paymentForm.paymentDate}
+                  onChange={(e) => setPaymentForm((prev) => ({ ...prev, paymentDate: e.target.value }))}
+                  disabled={modalSaving}
+                />
+              </Field>
+            </FormGrid>
+
+            <Muted>Ao salvar, a OS será marcada como PAGO.</Muted>
+          </div>
+        )}
+      </Modal>
+
+      {/* PICKUP */}
+      <Modal
+        title="Registrar retirada"
+        subtitle={selected ? `OS #${selected.osNumber} • ${STATUS_LABEL[selected.status]}` : ""}
+        isOpen={isPickupOpen}
+        onClose={closeAllModals}
+        disableClose={modalSaving}
+        footer={
+          <>
+            <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
+              Cancelar
+            </Button>
+            <Button type="button" variant="primary" onClick={handleSavePickup} disabled={modalSaving}>
+              {modalSaving ? "Salvando..." : "Registrar retirada e entregar"}
+            </Button>
+          </>
+        }
+      >
+        {pickupModalError ? <ModalError message={pickupModalError} /> : null}
+
+        {!selected ? (
+          <Muted>Sem dados.</Muted>
+        ) : (
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>Resumo da OS</div>
+              <div>
+                <strong>Cliente:</strong> {selected.client?.name || "-"}
+              </div>
+              <div>
+                <strong>Tipo de pagamento:</strong> {selected.paymentType ? PAYMENT_TYPE_LABEL[selected.paymentType] : "-"}
+              </div>
+              <div>
+                <strong>Data do pagamento:</strong> {formatDateOnlyBR(selected.paymentDate)}
+              </div>
+            </div>
+
+            <FormGrid>
+              <Field label="Data da retirada *">
+                <input
+                  type="date"
+                  value={paymentForm.pickupDate}
+                  onChange={(e) => setPaymentForm((prev) => ({ ...prev, pickupDate: e.target.value }))}
+                  disabled={modalSaving}
+                />
+              </Field>
+            </FormGrid>
+
+            <Muted>Ao salvar, a OS será marcada como ENTREGUE.</Muted>
+          </div>
+        )}
+      </Modal>
+
       {/* VIEW */}
       <Modal
         title="Visualizar"
@@ -1490,229 +1689,447 @@ export function ServiceOrdersPage() {
         {!selected ? (
           <Muted>Sem dados.</Muted>
         ) : viewMode === "ENTRY" ? (
-          <div style={{ display: "grid", gap: 14 }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800, fontSize: 16 }}>Comprovante de Entrada</div>
-              <div>
-                <strong>Nº OS:</strong> {selected.osNumber} • <strong>Data de entrada:</strong>{" "}
-                {formatDateTimeBR(selected.entryDate || selected.createdAt)}
-              </div>
-            </div>
+          <div style={{ display: "grid", gap: 16 }}>
+  <div
+    style={{
+      display: "grid",
+      gap: 8,
+      paddingBottom: 10,
+      borderBottom: "1px solid rgba(0,0,0,0.08)",
+    }}
+  >
+    <div style={{ fontWeight: 800, fontSize: 18 }}>Comprovante de Entrada</div>
+    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+      <div>
+        <strong>Nº OS:</strong> {selected.osNumber}
+      </div>
+      <div>
+        <strong>Data de entrada:</strong> {formatDateTimeBR(selected.entryDate || selected.createdAt)}
+      </div>
+      <div>
+        <strong>Status:</strong> {STATUS_LABEL[selected.status]}
+      </div>
+    </div>
+  </div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
-              <div>
-                <strong>Nome:</strong> {responsibleName(selected)}
-              </div>
-            </div>
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+    <div>
+      <strong>Nome:</strong> {responsibleName(selected)}
+    </div>
+  </div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
-              <div>
-                <strong>Nome:</strong> {selected.client?.name || "-"}
-              </div>
-              <div>
-                <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
-              </div>
-              <div>
-                <strong>Telefone:</strong> {selected.client?.phone || "-"}
-              </div>
-              <div>
-                <strong>Email:</strong> {selected.client?.email || "-"}
-              </div>
-            </div>
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
+    <div>
+      <strong>Nome:</strong> {selected.client?.name || "-"}
+    </div>
+    <div>
+      <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
+    </div>
+    <div>
+      <strong>Telefone:</strong> {selected.client?.phone || "-"}
+    </div>
+    <div>
+      <strong>Email:</strong> {selected.client?.email || "-"}
+    </div>
+  </div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Dados do Computador</div>
-              <div>
-                <strong>Equipamento:</strong> {equipmentLabel(selected)}
-              </div>
-              <div>
-                <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
-              </div>
-              <div>
-                <strong>Senha:</strong> {selected.equipmentPassword || "-"}
-              </div>
-              <div style={{ whiteSpace: "pre-wrap" }}>
-                <strong>Sintomas:</strong> {selected.symptoms || "-"}
-              </div>
-              <div>
-                <strong>Acessórios:</strong> {selected.accessories || "-"}
-              </div>
-              <div style={{ whiteSpace: "pre-wrap" }}>
-                <strong>Observações:</strong> {selected.observations || "-"}
-              </div>
-            </div>
-          </div>
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Dados do Equipamento</div>
+    <div>
+      <strong>Equipamento:</strong> {equipmentLabel(selected)}
+    </div>
+    <div>
+      <strong>Marca:</strong> {selected.equipmentBrand || "-"}
+    </div>
+    <div>
+      <strong>Modelo:</strong> {selected.equipmentModel || "-"}
+    </div>
+    <div>
+      <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
+    </div>
+    <div>
+      <strong>Senha:</strong> {selected.equipmentPassword || "-"}
+    </div>
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Defeito / Reclamação</div>
+    <div style={{ whiteSpace: "pre-wrap" }}>{selected.symptoms || "-"}</div>
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Acessórios</div>
+    <div>{selected.accessories || "-"}</div>
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Observações da OS</div>
+    <div style={{ whiteSpace: "pre-wrap" }}>{selected.observations || "-"}</div>
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gap: 8,
+      paddingTop: 10,
+      borderTop: "1px solid rgba(0,0,0,0.08)",
+    }}
+  >
+    <div style={{ fontWeight: 800 }}>Observações importantes</div>
+
+    <div style={{ display: "grid", gap: 4 }}>
+      {ENTRY_NOTES_TEXT.map((line) => (
+        <div key={line}>• {line}</div>
+      ))}
+    </div>
+  </div>
+</div>
         ) : viewMode === "BUDGET" ? (
-          <div style={{ display: "grid", gap: 14 }}>
-            <div style={{ fontWeight: 800, fontSize: 16 }}>Orçamento da Ordem de Serviço</div>
+          <div style={{ display: "grid", gap: 16 }}>
+  <div
+    style={{
+      display: "grid",
+      gap: 8,
+      paddingBottom: 10,
+      borderBottom: "1px solid rgba(0,0,0,0.08)",
+    }}
+  >
+    <div style={{ fontWeight: 800, fontSize: 18 }}>Orçamento da Ordem de Serviço</div>
+    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+      <div>
+        <strong>Nº OS:</strong> {selected.osNumber}
+      </div>
+      <div>
+        <strong>Entrada:</strong> {formatDateTimeBR(selected.entryDate || selected.createdAt)}
+      </div>
+      <div>
+        <strong>Status:</strong> {STATUS_LABEL[selected.status]}
+      </div>
+    </div>
+  </div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+    <div>
+      <strong>Nome:</strong> {responsibleName(selected)}
+    </div>
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
+    <div>
+      <strong>Nome:</strong> {selected.client?.name || "-"}
+    </div>
+    <div>
+      <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
+    </div>
+    <div>
+      <strong>Telefone:</strong> {selected.client?.phone || "-"}
+    </div>
+    <div>
+      <strong>Email:</strong> {selected.client?.email || "-"}
+    </div>
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Dados do Equipamento</div>
+    <div>
+      <strong>Equipamento:</strong> {equipmentLabel(selected)}
+    </div>
+    <div>
+      <strong>Marca:</strong> {selected.equipmentBrand || "-"}
+    </div>
+    <div>
+      <strong>Modelo:</strong> {selected.equipmentModel || "-"}
+    </div>
+    <div>
+      <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
+    </div>
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Defeito / Reclamação</div>
+    <div style={{ whiteSpace: "pre-wrap" }}>{selected.symptoms || "-"}</div>
+  </div>
+
+  <div style={{ display: "grid", gap: 8 }}>
+    <div style={{ fontWeight: 800 }}>Serviços a executar</div>
+
+    {!selected.budget ? (
+      <Muted>Nenhum orçamento encontrado para esta OS.</Muted>
+    ) : selected.budget.items?.length ? (
+      <div style={{ display: "grid", gap: 8 }}>
+        {selected.budget.items.map((it) => {
+          const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
+
+          return (
+            <div
+              key={it.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                gap: 10,
+                borderBottom: "1px solid rgba(0,0,0,0.06)",
+                paddingBottom: 6,
+              }}
+            >
               <div>
-                <strong>Nome:</strong> {responsibleName(selected)}
+                <div style={{ fontWeight: 700 }}>{it.description}</div>
+                <div style={{ fontSize: 12, color: "#667085" }}>
+                  Técnico responsável: {it.technician || "-"} • Qtd: {it.qty}
+                </div>
               </div>
+              <div style={{ fontWeight: 800 }}>R$ {lineTotal.toFixed(2)}</div>
             </div>
+          );
+        })}
+      </div>
+    ) : (
+      <Muted>Nenhum serviço adicionado ainda.</Muted>
+    )}
+  </div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
-              <div>
-                <strong>Nome:</strong> {selected.client?.name || "-"}
-              </div>
-              <div>
-                <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
-              </div>
-              <div>
-                <strong>Telefone:</strong> {selected.client?.phone || "-"}
-              </div>
-            </div>
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Totais do Orçamento</div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Dados do Computador</div>
-              <div>
-                <strong>Equipamento:</strong> {equipmentLabel(selected)}
-              </div>
-              <div>
-                <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
-              </div>
-              <div style={{ whiteSpace: "pre-wrap" }}>
-                <strong>Sintomas:</strong> {selected.symptoms || "-"}
-              </div>
-            </div>
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span>Subtotal (serviços)</span>
+      <strong>
+        R$ {selected.budget ? calcBudgetItemsTotal(selected.budget.items).toFixed(2) : "0.00"}
+      </strong>
+    </div>
 
-            <div style={{ display: "grid", gap: 8 }}>
-              <div style={{ fontWeight: 800 }}>Valores do Orçamento</div>
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span>Deslocamento</span>
+      <strong>
+        R$ {selected.budget ? toMoneyNumber(selected.budget.travelFee).toFixed(2) : "0.00"}
+      </strong>
+    </div>
 
-              {!selected.budget ? (
-                <Muted>Nenhum orçamento encontrado para esta OS.</Muted>
-              ) : (
-                <>
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <div style={{ fontWeight: 700 }}>Serviços</div>
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span>Serviço de terceiros</span>
+      <strong>
+        R$ {selected.budget ? toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2) : "0.00"}
+      </strong>
+    </div>
 
-                    {selected.budget.items?.length ? (
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {selected.budget.items.map((it) => {
-                          const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span>Desconto</span>
+      <strong>
+        - R$ {selected.budget ? toMoneyNumber(selected.budget.discount).toFixed(2) : "0.00"}
+      </strong>
+    </div>
 
-                          return (
-                            <div
-                              key={it.id}
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns: "1fr auto",
-                                gap: 10,
-                                borderBottom: "1px solid rgba(0,0,0,0.06)",
-                                paddingBottom: 6,
-                              }}
-                            >
-                              <div>
-                                <div style={{ fontWeight: 700 }}>{it.description}</div>
-                                <div style={{ fontSize: 12, color: "#667085" }}>
-                                  Técnico: {it.technician || "-"} • Qtd: {it.qty}
-                                </div>
-                              </div>
-                              <div style={{ fontWeight: 800 }}>R$ {lineTotal.toFixed(2)}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <Muted>Nenhum serviço adicionado ainda.</Muted>
-                    )}
-                  </div>
+    <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
 
-                  <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Subtotal (serviços)</span>
-                      <strong>R$ {calcBudgetItemsTotal(selected.budget.items).toFixed(2)}</strong>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Deslocamento</span>
-                      <strong>R$ {toMoneyNumber(selected.budget.travelFee).toFixed(2)}</strong>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Serviço de terceiros</span>
-                      <strong>R$ {toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2)}</strong>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Desconto</span>
-                      <strong>- R$ {toMoneyNumber(selected.budget.discount).toFixed(2)}</strong>
-                    </div>
-                    <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16 }}>
-                      <span style={{ fontWeight: 800 }}>Total</span>
-                      <span style={{ fontWeight: 900 }}>R$ {calcBudgetTotal(selected.budget).toFixed(2)}</span>
-                    </div>
-                  </div>
+    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16 }}>
+      <span style={{ fontWeight: 800 }}>Total</span>
+      <span style={{ fontWeight: 900 }}>
+        {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
+      </span>
+    </div>
+  </div>
 
-                  {selected.budget.note && (
-                    <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
-                      <strong>Observações do orçamento:</strong> {selected.budget.note}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
+  <div
+    style={{
+      display: "grid",
+      gap: 8,
+      paddingTop: 10,
+      borderTop: "1px solid rgba(0,0,0,0.08)",
+    }}
+  >
+    <div style={{ fontWeight: 800 }}>Condições de pagamento</div>
+    <div>{BUDGET_PAYMENT_CONDITIONS_TEXT}</div>
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Validade</div>
+    <div>{BUDGET_VALIDITY_TEXT}</div>
+  </div>
+
+  {selected.budget?.note && (
+    <div style={{ display: "grid", gap: 6 }}>
+      <div style={{ fontWeight: 800 }}>Observações do orçamento</div>
+      <div style={{ whiteSpace: "pre-wrap" }}>{selected.budget.note}</div>
+    </div>
+  )}
+</div>
         ) : (
-          <div style={{ display: "grid", gap: 14 }}>
-            <div style={{ fontWeight: 800, fontSize: 16 }}>Comprovante de Pagamento</div>
+          <div style={{ display: "grid", gap: 16 }}>
+  <div
+    style={{
+      display: "grid",
+      gap: 8,
+      paddingBottom: 10,
+      borderBottom: "1px solid rgba(0,0,0,0.08)",
+    }}
+  >
+    <div style={{ fontWeight: 800, fontSize: 18 }}>Comprovante de Pagamento</div>
+    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+      <div>
+        <strong>Nº OS:</strong> {selected.osNumber}
+      </div>
+      <div>
+        <strong>Data de entrada:</strong> {formatDateTimeBR(selected.entryDate || selected.createdAt)}
+      </div>
+      <div>
+        <strong>Status:</strong> {STATUS_LABEL[selected.status]}
+      </div>
+    </div>
+  </div>
 
-            <div>
-              <strong>Nº OS:</strong> {selected.osNumber} • <strong>Data de entrada:</strong>{" "}
-              {formatDateTimeBR(selected.entryDate || selected.createdAt)}
-            </div>
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
+    <div>
+      <strong>Nome:</strong> {responsibleName(selected)}
+    </div>
+  </div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Responsável pela OS</div>
-              <div>
-                <strong>Nome:</strong> {responsibleName(selected)}
-              </div>
-            </div>
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
+    <div>
+      <strong>Nome:</strong> {selected.client?.name || "-"}
+    </div>
+    <div>
+      <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
+    </div>
+    <div>
+      <strong>Telefone:</strong> {selected.client?.phone || "-"}
+    </div>
+    <div>
+      <strong>Email:</strong> {selected.client?.email || "-"}
+    </div>
+  </div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Dados do Cliente</div>
-              <div>
-                <strong>Nome:</strong> {selected.client?.name || "-"}
-              </div>
-              <div>
-                <strong>CPF/CNPJ:</strong> {selected.clientCpfCnpj || "-"}
-              </div>
-              <div>
-                <strong>Telefone:</strong> {selected.client?.phone || "-"}
-              </div>
-            </div>
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Dados do Equipamento</div>
+    <div>
+      <strong>Equipamento:</strong> {equipmentLabel(selected)}
+    </div>
+    <div>
+      <strong>Marca:</strong> {selected.equipmentBrand || "-"}
+    </div>
+    <div>
+      <strong>Modelo:</strong> {selected.equipmentModel || "-"}
+    </div>
+    <div>
+      <strong>Nº de série:</strong> {selected.equipmentSerialNumber || "-"}
+    </div>
+  </div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Resumo</div>
-              <div>
-                <strong>Equipamento:</strong> {equipmentLabel(selected)}
-              </div>
-              <div>
-                <strong>Tipo de pagamento:</strong>{" "}
-                {selected.paymentType ? PAYMENT_TYPE_LABEL[selected.paymentType] : "-"}
-              </div>
-              <div>
-                <strong>Data do pagamento:</strong> {formatDateOnlyBR(selected.paymentDate)}
-              </div>
-              <div>
-                <strong>Data da retirada:</strong> {formatDateOnlyBR(selected.pickupDate)}
-              </div>
-              <div>
-                <strong>Total (baseado no orçamento):</strong>{" "}
-                {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
-              </div>
-            </div>
+  <div style={{ display: "grid", gap: 8 }}>
+    <div style={{ fontWeight: 800 }}>Serviços executados</div>
 
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Garantia</div>
-              {WARRANTY_TEXT.map((line) => (
-                <div key={line}>• {line}</div>
-              ))}
+    {selected.budget?.items?.length ? (
+      <div style={{ display: "grid", gap: 8 }}>
+        {selected.budget.items.map((it) => {
+          const lineTotal = Number(it.qty || 0) * toMoneyNumber(it.unitValue);
+
+          return (
+            <div
+              key={it.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                gap: 10,
+                borderBottom: "1px solid rgba(0,0,0,0.06)",
+                paddingBottom: 6,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700 }}>{it.description}</div>
+                <div style={{ fontSize: 12, color: "#667085" }}>
+                  Técnico responsável: {it.technician || "-"} • Qtd: {it.qty}
+                </div>
+              </div>
+              <div style={{ fontWeight: 800 }}>R$ {lineTotal.toFixed(2)}</div>
             </div>
-          </div>
+          );
+        })}
+      </div>
+    ) : (
+      <Muted>Nenhum serviço registrado no orçamento.</Muted>
+    )}
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Pagamento e retirada</div>
+    <div>
+      <strong>Tipo de pagamento:</strong>{" "}
+      {selected.paymentType ? PAYMENT_TYPE_LABEL[selected.paymentType] : "-"}
+    </div>
+    <div>
+      <strong>Data do pagamento:</strong> {formatDateOnlyBR(selected.paymentDate)}
+    </div>
+    <div>
+      <strong>Data da retirada:</strong> {formatDateOnlyBR(selected.pickupDate)}
+    </div>
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Totais</div>
+
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span>Subtotal (serviços)</span>
+      <strong>
+        R$ {selected.budget ? calcBudgetItemsTotal(selected.budget.items).toFixed(2) : "0.00"}
+      </strong>
+    </div>
+
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span>Deslocamento</span>
+      <strong>
+        R$ {selected.budget ? toMoneyNumber(selected.budget.travelFee).toFixed(2) : "0.00"}
+      </strong>
+    </div>
+
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span>Serviço de terceiros</span>
+      <strong>
+        R$ {selected.budget ? toMoneyNumber(selected.budget.thirdPartyFee).toFixed(2) : "0.00"}
+      </strong>
+    </div>
+
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span>Desconto</span>
+      <strong>
+        - R$ {selected.budget ? toMoneyNumber(selected.budget.discount).toFixed(2) : "0.00"}
+      </strong>
+    </div>
+
+    <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 0" }} />
+
+    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16 }}>
+      <span style={{ fontWeight: 800 }}>Total</span>
+      <span style={{ fontWeight: 900 }}>
+        {selected.budget ? `R$ ${calcBudgetTotal(selected.budget).toFixed(2)}` : "—"}
+      </span>
+    </div>
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gap: 8,
+      paddingTop: 10,
+      borderTop: "1px solid rgba(0,0,0,0.08)",
+    }}
+  >
+    <div style={{ fontWeight: 800 }}>Garantia</div>
+    <div style={{ display: "grid", gap: 4 }}>
+      {WARRANTY_TEXT.map((line) => (
+        <div key={line}>• {line}</div>
+      ))}
+    </div>
+  </div>
+
+  <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ fontWeight: 800 }}>Declaração de recebimento</div>
+    <div>{PAYMENT_RECEIPT_DECLARATION_TEXT}</div>
+  </div>
+</div>
         )}
       </Modal>
     </section>
