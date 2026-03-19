@@ -8,8 +8,6 @@ import {
   type CreateClientInput,
   type UpdateClientInput,
 } from "../services/clients";
-
-import { PageHeader } from "../components/PageHeader";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { Card } from "../components/Card";
@@ -260,10 +258,12 @@ export function ClientsPage() {
 
   return (
     <section className="content-body">
-      <PageHeader
-        title="Clientes"
-        subtitle="Cadastro e consulta de clientes."
-        actions={
+            <div className="page-head">
+        <div>
+          <h1 className="page-title">Clientes</h1>
+          <p className="page-subtitle">Cadastro e consulta de clientes.</p>
+        </div>
+        <div className="page-actions">
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <input
               value={searchCpfCnpj}
@@ -278,9 +278,8 @@ export function ClientsPage() {
                 border: "1px solid rgba(0,0,0,0.12)",
                 outline: "none",
                 minWidth: 240,
-              }}
-              disabled={loading}
-            />
+        </div>
+      </div>
 
             <Button type="button" variant="secondary" onClick={applySearch} disabled={loading}>
               Buscar
@@ -532,3 +531,6 @@ export function ClientsPage() {
     </section>
   );
 }
+
+
+

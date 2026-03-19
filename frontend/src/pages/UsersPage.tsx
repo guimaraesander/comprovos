@@ -4,8 +4,6 @@ import axios from "axios";
 
 import { useAuth } from "../context/AuthContext";
 import { createUser, deleteUser, listUsers, type User, type UserRole } from "../services/users";
-
-import { PageHeader } from "../components/PageHeader";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { Card } from "../components/Card";
@@ -182,15 +180,17 @@ export function UsersPage() {
 
   return (
     <section className="content-body">
-      <PageHeader
-        title="Usuários"
-        subtitle="Gerencie os usuários internos do sistema."
-        actions={
+            <div className="page-head">
+        <div>
+          <h1 className="page-title">Usuários</h1>
+          <p className="page-subtitle">Gerencie os usuários internos do sistema.</p>
+        </div>
+        <div className="page-actions">
           <Button type="button" variant="primary" onClick={openCreate} disabled={loading}>
             Novo usuário
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {pageError && <AlertError className="mb-12">{pageError}</AlertError>}
 
@@ -321,3 +321,6 @@ export function UsersPage() {
     </section>
   );
 }
+
+
+

@@ -2,15 +2,27 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-const links = [
-  { to: "/", label: "Dashboard" },
-  { to: "/clients", label: "Clientes" },
-  { to: "/service-orders", label: "Ordens de Servico" },
+type NavItem = {
+  to: string;
+  label: string;
+  icon: string;
+  exact?: boolean;
+  adminOnly?: boolean;
+};
+
+const navItems: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: "🏠", exact: true },
+  { to: "/clients", label: "Clientes", icon: "👤" },
+  { to: "/service-orders", label: "Ordens de Serviço", icon: "🛠️" },
+  { to: "/users", label: "Usuários", icon: "👥", adminOnly: true },
 ];
 
 export function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+
+  const closeMenu = () => setMenuOpen(false);
+  const userInitial = user?.name?.trim().charAt(0)?.toUpperCase() || "U";
 
   return (
     <div className="app-shell">
@@ -32,39 +44,39 @@ export function AppLayout() {
         </div>
 
         <nav className="sidebar-nav">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.to === "/"}
-              className={({ isActive }) => (isActive ? "sidebar-link active" : "sidebar-link")}
-              onClick={() => setMenuOpen(false)}
-            >
-              {link.label}
-            </NavLink>
+          {navItems.map((link) => (
+            (!link.adminOnly || user?.role === "ADMIN") && (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.exact}
+                className={({ isActive }) => (isActive ? "sidebar-link active" : "sidebar-link")}
+                onClick={closeMenu}
+              >
+                <span className="sidebar-link-icon" aria-hidden="true">
+                  {link.icon}
+                </span>
+                {link.label}
+              </NavLink>
+            )
           ))}
-
-          {user?.role === "ADMIN" && (
-            <NavLink
-              to="/users"
-              className={({ isActive }) => (isActive ? "sidebar-link active" : "sidebar-link")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Usuarios
-            </NavLink>
-          )}
         </nav>
 
         <div className="sidebar-user">
-          <p>{user?.name || "Usuario"}</p>
-          <small>{user?.role || "Sem papel definido"}</small>
+          <div className="sidebar-user-info">
+            <div className="sidebar-user-avatar">{userInitial}</div>
+            <div>
+              <p>{user?.name || "Usuário"}</p>
+              <small>{user?.role || "Sem papel definido"}</small>
+            </div>
+          </div>
           <button type="button" onClick={logout}>
             Sair
           </button>
         </div>
       </aside>
 
-      {menuOpen && <div className="sidebar-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+      {menuOpen && <div className="sidebar-backdrop" onClick={closeMenu} aria-hidden="true" />}
 
       <main className="content">
         <div className="content-body">

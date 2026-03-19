@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-
-import { PageHeader } from "../components/PageHeader";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { Card } from "../components/Card";
@@ -1411,10 +1409,12 @@ export function ServiceOrdersPage() {
 
   return (
     <section className="content-body">
-      <PageHeader
-        title="Ordens de Serviço"
-        subtitle="Registro de entrada com dados do equipamento preenchidos na OS."
-        actions={
+            <div className="page-head">
+        <div>
+          <h1 className="page-title">Ordens de Serviço</h1>
+          <p className="page-subtitle">Registro de entrada com dados do equipamento preenchidos na OS.</p>
+        </div>
+        <div className="page-actions">
           <>
             <Button type="button" variant="secondary" onClick={refresh} disabled={loading || refreshing}>
               {refreshing ? "Atualizando..." : "Atualizar"}
@@ -1423,8 +1423,8 @@ export function ServiceOrdersPage() {
               Nova OS
             </Button>
           </>
-        }
-      />
+        </div>
+      </div>
 
       {pageError && <AlertError>{pageError}</AlertError>}
 
@@ -2486,3 +2486,7 @@ export function ServiceOrdersPage() {
     </section>
   );
 }
+
+
+
+

@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-
-import { PageHeader } from "../components/PageHeader";
 import { Card } from "../components/Card";
 import { Table } from "../components/Table";
 import { AlertError, Muted } from "../components/Alert";
@@ -210,9 +208,12 @@ export function DashboardPage() {
 
   return (
     <section className="content-body">
-      <PageHeader
-        title="Dashboard"
-        actions={
+            <div className="page-head">
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">Vis„o geral do sistema</p>
+        </div>
+        <div className="page-actions">
           <div className={styles.headerActions}>
             <div className={styles.lastUpdated}>
               <span className={styles.dot} />
@@ -222,8 +223,8 @@ export function DashboardPage() {
               Abrir OS
             </a>
           </div>
-        }
-      />
+        </div>
+      </div>
 
       {error && <AlertError className="mb-12">{error}</AlertError>}
 
@@ -235,7 +236,7 @@ export function DashboardPage() {
             <div className={styles.heroInner}>
               <div>
                 <p className={styles.heroKicker}>Painel Executivo</p>
-                <h2 className={styles.heroTitle}>Visao geral do dia</h2>
+                <h2 className={styles.heroTitle}>Vis√£o Geral do Dia</h2>
               </div>
             </div>
           </Card>
@@ -369,3 +370,8 @@ export function DashboardPage() {
     </section>
   );
 }
+
+
+
+
+
