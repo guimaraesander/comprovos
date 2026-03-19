@@ -104,9 +104,17 @@ export function AppLayout() {
             <h2>{pageInfo.title}</h2>
             <p>{pageInfo.subtitle}</p>
           </div>
-          <button className="header-action" type="button" onClick={closeMenu}>
-            Atualizar
-          </button>
+          <div className="header-tools">
+            <input className="global-search" placeholder="Buscar clientes, ordens..." aria-label="Busca geral" />
+            <div className="header-quick-actions">
+              <NavLink className="header-action" to="/clients">
+                + Cliente
+              </NavLink>
+              <NavLink className="header-action secondary" to="/service-orders">
+                + Ordem
+              </NavLink>
+            </div>
+          </div>
         </header>
 
         <div className="content-body">
