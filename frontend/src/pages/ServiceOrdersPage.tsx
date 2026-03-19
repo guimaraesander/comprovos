@@ -1426,7 +1426,7 @@ export function ServiceOrdersPage() {
 
       {!loading ? (
         <div className="page-summary" aria-live="polite">
-          <span className="page-stat-chip">{`Ordens: ${sortedOrders.length}`}</span>
+          <span className="page-stat-chip">{`Total: ${sortedOrders.length}`}</span>
         </div>
       ) : null}
 

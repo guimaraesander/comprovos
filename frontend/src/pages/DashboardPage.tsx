@@ -187,7 +187,7 @@ export function DashboardPage() {
   }, [recentOrders, recentClients]);
 
   const kpis: KpiCardProps[] = [
-    { label: "Ordens no Total", value: totalOrders, tone: "blue" },
+    { label: "Total de OS", value: totalOrders, tone: "blue" },
     {
       label: "Pendentes",
       value: pendingCount,
