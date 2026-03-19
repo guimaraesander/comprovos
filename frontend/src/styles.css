@@ -117,28 +117,76 @@ a {
 }
 
 /* =========================================================
-   App Shell (Layout)
+   App Shell
 ========================================================= */
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px 1fr;
-  background: #f6f8fc;
+  grid-template-columns: 310px 1fr;
+  background:
+    radial-gradient(800px 320px at 14% -12%, rgba(59, 130, 246, 0.24), transparent 60%),
+    radial-gradient(800px 320px at 88% 0%, rgba(14, 165, 233, 0.2), transparent 52%),
+    #f1f5f9;
+}
+
+.menu-toggle {
+  display: none;
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #fff;
+  z-index: 30;
+}
+
+.menu-toggle span {
+  width: 17px;
+  height: 2px;
+  background: #fff;
+  display: block;
+  margin: 4px auto;
 }
 
 /* Sidebar */
 .sidebar {
-  background: #0b1b3a;
-  color: #e2e8f0;
-  padding: 18px;
+  width: 310px;
+  padding: 24px;
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 16px;
+  color: #dbeafe;
+  background: linear-gradient(180deg, #020617, #0b1d3a 45%, #0f2550);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-shadow: 14px 0 40px rgba(11, 18, 32, 0.22);
+}
+
+.sidebar-brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sidebar-icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #38bdf8, #3b82f6);
+  color: #fff;
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 12px 30px rgba(56, 189, 248, 0.35);
 }
 
 .sidebar-brand h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
   color: #ffffff;
 }
 
@@ -150,29 +198,61 @@ a {
 
 .sidebar-nav {
   display: grid;
-  gap: 8px;
+  gap: 9px;
 }
 
-.sidebar-nav a {
-  padding: 10px 12px;
-  border-radius: 10px;
+.sidebar-link {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 12px;
+  border-radius: 12px;
   color: #dbeafe;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
-.sidebar-nav a:hover {
-  background: rgba(59, 130, 246, 0.18);
+.sidebar-link:hover {
+  transform: translateX(4px);
+  background: rgba(96, 165, 250, 0.17);
 }
 
-.sidebar-nav a.active {
-  background: rgba(59, 130, 246, 0.35);
+.sidebar-link.active {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.34), rgba(14, 165, 233, 0.2));
   color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-link-icon {
+  width: 22px;
+  opacity: 0.95;
+  text-align: center;
 }
 
 .sidebar-user {
-  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
   padding-top: 14px;
   display: grid;
-  gap: 6px;
+  gap: 10px;
+}
+
+.sidebar-user-info {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sidebar-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #facc15, #f97316);
+  color: #0b1b3a;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .sidebar-user p {
@@ -186,13 +266,14 @@ a {
 }
 
 .sidebar-user button {
-  margin-top: 8px;
+  margin-top: 4px;
   height: 40px;
   border-radius: 10px;
-  border: 1px solid rgba(226, 232, 240, 0.35);
+  border: 1px solid rgba(226, 232, 240, 0.4);
   background: transparent;
   color: #e2e8f0;
   cursor: pointer;
+  font-weight: 600;
 }
 
 .sidebar-user button:hover {
@@ -201,47 +282,107 @@ a {
 
 /* Content */
 .content {
-  padding: 18px 22px;
+  padding: 24px;
 }
 
 .content-header {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 16px;
+  padding: 16px 18px;
   margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(8px);
+}
+
+.content-header .kicker {
+  margin: 0;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
 }
 
 .content-header h2 {
-  margin: 0;
-  font-size: 20px;
+  margin: 6px 0 0;
+  font-size: 30px;
+  color: #0f172a;
+  line-height: 1.1;
 }
 
 .content-header p {
   margin: 6px 0 0;
-  color: #64748b;
+  color: #475569;
   font-size: 14px;
 }
 
-/* Agora as páginas (Clients/OS/Dashboard) usam "content-body"
-   mas os detalhes de Card/Table/Form/Buttons/Modal foram migrados para components/ (CSS Modules). */
+.header-action {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .content-body {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   padding: 16px;
-  min-height: calc(100vh - 18px - 18px - 16px - 64px);
+  min-height: calc(100vh - 140px);
+}
+
+.sidebar-backdrop {
+  display: none;
 }
 
 /* =========================================================
    Responsive
 ========================================================= */
-@media (max-width: 900px) {
+@media (max-width: 950px) {
+  .menu-toggle {
+    display: grid;
+    place-items: center;
+  }
+
   .app-shell {
     grid-template-columns: 1fr;
   }
 
   .sidebar {
-    grid-template-rows: auto auto auto;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 25;
+    transform: translateX(-100%);
+    transition: transform 0.26s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.45);
+    z-index: 20;
+    animation: fadeIn 0.25s ease;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }
