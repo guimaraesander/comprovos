@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
@@ -35,22 +35,9 @@ function safeErrorMessage(err: unknown) {
 
 function ModalError({ message }: { message: string }) {
   return (
-    <div
-      style={{
-        marginBottom: 12,
-        borderRadius: 12,
-        border: "1px solid #fecdca",
-        background: "#fee4e2",
-        color: "#7a271a",
-        padding: "12px 12px",
-        fontWeight: 900,
-        boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
-      }}
-      role="alert"
-      aria-live="polite"
-    >
+    <AlertError role="alert" aria-live="polite" style={{ marginBottom: 12 }}>
       {message}
-    </div>
+    </AlertError>
   );
 }
 
@@ -942,6 +929,7 @@ export function ServiceOrdersPage() {
   const [cpfQuery, setCpfQuery] = useState("");
   const [cpfOpen, setCpfOpen] = useState(false);
   const cpfBoxRef = useRef<HTMLDivElement | null>(null);
+  const createCpfInputRef = useRef<HTMLInputElement | null>(null);
 
   const clientsById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
 
@@ -1020,6 +1008,11 @@ export function ServiceOrdersPage() {
     setCpfQuery("");
     setCpfOpen(false);
     setCreateModalError(null);
+
+    if (createCpfInputRef.current) {
+      createCpfInputRef.current.setCustomValidity("");
+    }
+
     setIsCreateOpen(true);
   }
 
@@ -1061,6 +1054,10 @@ export function ServiceOrdersPage() {
 
     setCpfQuery(cpf);
     setCpfOpen(false);
+
+    if (createCpfInputRef.current) {
+      createCpfInputRef.current.setCustomValidity("");
+    }
   }
 
   function clearClientSelection() {
@@ -1073,21 +1070,31 @@ export function ServiceOrdersPage() {
       clientEmail: "",
       clientAddress: "",
     }));
+
+    if (createCpfInputRef.current) {
+      createCpfInputRef.current.setCustomValidity("");
+    }
   }
 
-  async function handleCreate() {
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setCreateModalError(null);
 
     const clientId = normalizeText(form.clientId);
     const clientCpfCnpj = normalizeText(form.clientCpfCnpj);
-    const equipmentType = normalizeText(form.equipmentType);
-    const symptoms = normalizeText(form.symptoms);
 
     if (!clientId || !clientCpfCnpj) {
-      return setCreateModalError("Digite o CPF/CNPJ e selecione o cliente encontrado na lista.");
+      if (createCpfInputRef.current) {
+        createCpfInputRef.current.setCustomValidity("Selecione o cliente encontrado na lista.");
+        createCpfInputRef.current.focus();
+        createCpfInputRef.current.reportValidity();
+      }
+
+      return;
     }
-    if (!equipmentType) return setCreateModalError("Informe o tipo do equipamento.");
-    if (!symptoms) return setCreateModalError("Informe os sintomas.");
+
+    const equipmentType = normalizeText(form.equipmentType);
+    const symptoms = normalizeText(form.symptoms);
 
     setModalSaving(true);
 
@@ -1600,53 +1607,66 @@ export function ServiceOrdersPage() {
             <Button type="button" variant="secondary" onClick={closeAllModals} disabled={modalSaving}>
               Cancelar
             </Button>
-            <Button type="button" variant="primary" onClick={handleCreate} disabled={modalSaving}>
+            <Button type="submit" variant="primary" form="service-order-create-form" disabled={modalSaving}>
               {modalSaving ? "Salvando..." : "Salvar"}
             </Button>
           </>
         }
       >
-        {createModalError ? <ModalError message={createModalError} /> : null}
+        <form id="service-order-create-form" onSubmit={handleCreate}>
+          {createModalError ? <ModalError message={createModalError} /> : null}
 
-        <div className={styles.section}>
-          <div className={styles.sectionTitle}>Dados do cliente</div>
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>Dados do cliente</div>
 
-          <FormGrid>
-            <Field label="Buscar por CPF/CNPJ *" full>
-              <div className={styles.cpfBox} ref={cpfBoxRef}>
-                <input
-                  value={cpfQuery}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setCpfQuery(v);
-                    setCpfOpen(true);
-                    clearClientSelection();
+            <FormGrid>
+              <Field label="Buscar por CPF/CNPJ *" full>
+                <div className={styles.cpfBox} ref={cpfBoxRef}>
+                  <input
+                    ref={createCpfInputRef}
+                    required
+                    value={cpfQuery}
+                    onChange={(e) => {
+                      if (createCpfInputRef.current) {
+                        createCpfInputRef.current.setCustomValidity("");
+                      }
 
-                    const q = normalizeCpfCnpj(v);
-                    const exact = clients.find((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")) === q);
-                    if (exact) applyClientSelection(exact);
-                  }}
-                  onFocus={() => setCpfOpen(true)}
-                  placeholder="Digite o CPF/CNPJ do cliente…"
-                  disabled={modalSaving}
-                />
+                      const v = e.target.value;
+                      setCpfQuery(v);
+                      setCpfOpen(true);
+                      clearClientSelection();
 
-                {cpfOpen && cpfQuery.trim().length > 0 && (
-                  <div className={styles.dropdown}>
-                    {cpfMatches.length === 0 ? (
-                      <div className={styles.noResults}>Nenhum cliente encontrado com esse CPF/CNPJ.</div>
-                    ) : (
-                      cpfMatches.map((c: any) => (
-                        <button key={c.id} type="button" className={styles.option} onClick={() => applyClientSelection(c)}>
-                          <span className={styles.optionCpf}>{String(c.cpfCnpj || "").trim() || "—"}</span>
-                          <span className={styles.optionName}>{c.name}</span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            </Field>
+                      const q = normalizeCpfCnpj(v);
+                      const exact = clients.find((c: any) => normalizeCpfCnpj(String(c.cpfCnpj || "")) === q);
+                      if (exact) applyClientSelection(exact);
+                    }}
+                    onFocus={() => setCpfOpen(true)}
+                    onInvalid={(e) => {
+                      e.currentTarget.setCustomValidity("Preencha este campo.");
+                    }}
+                    onInput={(e) => {
+                      (e.currentTarget as HTMLInputElement).setCustomValidity("");
+                    }}
+                    placeholder="Digite o CPF/CNPJ do cliente…"
+                    disabled={modalSaving}
+                  />
+
+                  {cpfOpen && cpfQuery.trim().length > 0 && (
+                    <div className={styles.dropdown}>
+                      {cpfMatches.length === 0 ? (
+                        <div className={styles.noResults}>Nenhum cliente encontrado com esse CPF/CNPJ.</div>
+                      ) : (
+                        cpfMatches.map((c: any) => (
+                          <button key={c.id} type="button" className={styles.option} onClick={() => applyClientSelection(c)}>
+                            <span className={styles.optionCpf}>{String(c.cpfCnpj || "").trim() || "—"}</span>
+                            <span className={styles.optionName}>{c.name}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Field>
 
             <Field label="Nome" full>
               <input value={form.clientName} disabled readOnly placeholder="Preenche ao localizar CPF/CNPJ" />
@@ -1672,6 +1692,7 @@ export function ServiceOrdersPage() {
           <FormGrid>
             <Field label="Tipo do equipamento *">
               <input
+                required
                 value={form.equipmentType}
                 onChange={(e) => setForm((p) => ({ ...p, equipmentType: e.target.value }))}
                 placeholder="Ex.: Desktop, Notebook"
@@ -1712,6 +1733,7 @@ export function ServiceOrdersPage() {
             </Field>
             <Field label="Sintomas *" full>
               <textarea
+                required
                 value={form.symptoms}
                 onChange={(e) => setForm((p) => ({ ...p, symptoms: e.target.value }))}
                 rows={4}
@@ -1738,6 +1760,11 @@ export function ServiceOrdersPage() {
             </Field>
           </FormGrid>
         </div>
+
+        <div style={{ marginTop: 10 }}>
+          <Muted>* Campos obrigatórios</Muted>
+        </div>
+        </form>
       </Modal>
 
       <Modal
@@ -1816,6 +1843,10 @@ export function ServiceOrdersPage() {
             </Field>
           </FormGrid>
         </div>
+
+        <div style={{ marginTop: 10 }}>
+          <Muted>* Campos obrigatórios</Muted>
+        </div>
       </Modal>
 
       <Modal
@@ -1834,7 +1865,7 @@ export function ServiceOrdersPage() {
             </Button>
           </>
         }
-      >
+        >
         {statusModalError ? <ModalError message={statusModalError} /> : null}
         {statusOptions.length === 0 ? (
           <Muted>Nenhuma transição de status disponível.</Muted>
@@ -1851,6 +1882,10 @@ export function ServiceOrdersPage() {
             </Field>
           </FormGrid>
         )}
+
+        <div style={{ marginTop: 10 }}>
+          <Muted>* Campos obrigatórios</Muted>
+        </div>
       </Modal>
 
       <Modal
@@ -2075,6 +2110,10 @@ export function ServiceOrdersPage() {
             <Muted>Ao salvar, a OS será marcada como PAGO.</Muted>
           </div>
         )}
+
+        <div style={{ marginTop: 10 }}>
+          <Muted>* Campos obrigatórios</Muted>
+        </div>
       </Modal>
 
       <Modal
@@ -2118,6 +2157,10 @@ export function ServiceOrdersPage() {
             <Muted>Ao salvar, a OS será marcada como ENTREGUE.</Muted>
           </div>
         )}
+
+        <div style={{ marginTop: 10 }}>
+          <Muted>* Campos obrigatórios</Muted>
+        </div>
       </Modal>
 
       <Modal
