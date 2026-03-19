@@ -264,23 +264,15 @@ export function ClientsPage() {
           <p className="page-subtitle">Cadastro e consulta de clientes.</p>
         </div>
         <div className="page-actions">
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <input
-              value={searchCpfCnpj}
-              onChange={(e) => setSearchCpfCnpj(normalizeCpfCnpjDigits(e.target.value))}
-              placeholder="Buscar por CPF/CNPJ."
-              inputMode="numeric"
-              maxLength={14}
-              style={{
-                height: 40,
-                padding: "0 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(0,0,0,0.12)",
-                outline: "none",
-                minWidth: 240,
-              }}
-            />
-          </div>
+          <input
+            className="toolbar-input"
+            value={searchCpfCnpj}
+            onChange={(e) => setSearchCpfCnpj(normalizeCpfCnpjDigits(e.target.value))}
+            placeholder="Buscar por CPF/CNPJ."
+            inputMode="numeric"
+            maxLength={14}
+          />
+
           <Button type="button" variant="secondary" onClick={applySearch} disabled={loading}>
             Buscar
           </Button>
@@ -294,6 +286,13 @@ export function ClientsPage() {
           </Button>
         </div>
       </div>
+
+      {!loading ? (
+        <div className="page-summary" aria-live="polite">
+          <span className="page-stat-chip">{`Total: ${clients.length}`}</span>
+          <span className="page-stat-chip">{`Exibidos: ${filteredClients.length}`}</span>
+        </div>
+      ) : null}
 
       {pageError && <AlertError className="mb-12">{pageError}</AlertError>}
 
@@ -321,7 +320,7 @@ export function ClientsPage() {
                 filteredClients.map((c) => (
                   <tr key={c.id}>
                     <td>
-                      <div style={{ fontWeight: 800 }}>{c.name}</div>
+                      <div className="table-row-title">{c.name}</div>
                       <Muted>
                         {c.city || c.district
                           ? `${c.city || ""}${c.city && c.district ? " • " : ""}${c.district || ""}`
@@ -337,7 +336,7 @@ export function ClientsPage() {
                     <td>{c.cpfCnpj || "-"}</td>
 
                     <td>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <div className="table-inline-actions">
                         <Button type="button" variant="secondary" onClick={() => openView(c)}>
                           Visualizar
                         </Button>

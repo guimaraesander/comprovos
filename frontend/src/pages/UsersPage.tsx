@@ -192,6 +192,12 @@ export function UsersPage() {
         </div>
       </div>
 
+      {!loading ? (
+        <div className="page-summary" aria-live="polite">
+          <span className="page-stat-chip">{`Usuários: ${users.length}`}</span>
+        </div>
+      ) : null}
+
       {pageError && <AlertError className="mb-12">{pageError}</AlertError>}
 
       {loading ? (
@@ -222,13 +228,13 @@ export function UsersPage() {
                   return (
                     <tr key={item.id}>
                       <td>
-                        <div style={{ fontWeight: 800 }}>{item.name}</div>
+                        <div className="table-row-title">{item.name}</div>
                       </td>
                       <td>{item.email}</td>
                       <td>{roleLabel(item.role)}</td>
                       <td>{formatDateTimeBR(item.createdAt)}</td>
                       <td>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <div className="table-inline-actions">
                           <Button
                             type="button"
                             variant="danger"

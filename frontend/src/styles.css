@@ -1,4 +1,4 @@
-/* =========================================================
+Ôªø/* =========================================================
    Base / Reset
 ========================================================= */
 * {
@@ -292,7 +292,7 @@ a {
   padding: 16px;
   min-height: calc(100vh - 140px);
 }
-/* CabeÁalho simples de p·gina */
+/* Cabe√ßalho de p√°gina */
 .page-head {
   display: flex;
   justify-content: space-between;
@@ -321,6 +321,59 @@ a {
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.page-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -4px 0 12px;
+}
+
+.page-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eef4ff;
+  border: 1px solid #dbeafe;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.toolbar-input {
+  height: 40px;
+  padding: 0 12px;
+  min-width: 240px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.22);
+  outline: none;
+}
+
+.toolbar-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.table-row-title {
+  font-weight: 800;
+}
+
+.table-inline-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.list-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 @media (max-width: 900px) {
@@ -388,4 +441,5 @@ a {
     opacity: 1;
   }
 }
+
 

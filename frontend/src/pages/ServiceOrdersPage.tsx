@@ -1409,22 +1409,26 @@ export function ServiceOrdersPage() {
 
   return (
     <section className="content-body">
-            <div className="page-head">
+      <div className="page-head">
         <div>
           <h1 className="page-title">Ordens de Serviço</h1>
           <p className="page-subtitle">Registro de entrada com dados do equipamento preenchidos na OS.</p>
         </div>
         <div className="page-actions">
-          <>
-            <Button type="button" variant="secondary" onClick={refresh} disabled={loading || refreshing}>
-              {refreshing ? "Atualizando..." : "Atualizar"}
-            </Button>
-            <Button type="button" variant="primary" onClick={openCreate} disabled={loading}>
-              Nova OS
-            </Button>
-          </>
+          <Button type="button" variant="secondary" onClick={refresh} disabled={loading || refreshing}>
+            {refreshing ? "Atualizando..." : "Atualizar"}
+          </Button>
+          <Button type="button" variant="primary" onClick={openCreate} disabled={loading}>
+            Nova OS
+          </Button>
         </div>
       </div>
+
+      {!loading ? (
+        <div className="page-summary" aria-live="polite">
+          <span className="page-stat-chip">{`Ordens: ${sortedOrders.length}`}</span>
+        </div>
+      ) : null}
 
       {pageError && <AlertError>{pageError}</AlertError>}
 
