@@ -43,7 +43,7 @@ const initialForm: FormState = {
 
 function safeErrorMessage(err: unknown, fallback: string) {
   if (axios.isAxiosError(err)) {
-    if (!err.response) return "NÃ£o foi possÃ­vel conectar ao servidor.";
+    if (!err.response) return "Não foi possível conectar ao servidor.";
     return (err.response.data as any)?.message || fallback;
   }
   if (err instanceof Error) return err.message;
@@ -133,7 +133,7 @@ export function ClientsPage() {
       const data = await listClients();
       setClients(Array.isArray(data) ? data : []);
     } catch (err) {
-      setPageError(safeErrorMessage(err, "NÃ£o foi possÃ­vel carregar a lista de clientes."));
+      setPageError(safeErrorMessage(err, "Não foi possível carregar a lista de clientes."));
     } finally {
       setLoading(false);
     }
@@ -221,7 +221,7 @@ export function ClientsPage() {
     if (!phoneDigits) return setModalError("Informe o telefone do cliente.");
     if (!cpfCnpjDigits) return setModalError("Informe o CPF/CNPJ do cliente.");
     if (!validateCpfCnpjDigits(cpfCnpjDigits)) {
-      return setModalError("CPF deve ter 11 dÃ­gitos ou CNPJ 14 dÃ­gitos.");
+      return setModalError("CPF deve ter 11 dígitos ou CNPJ 14 dígitos.");
     }
 
     setSaving(true);
@@ -231,7 +231,7 @@ export function ClientsPage() {
         const created = await createClient(payload);
         setClients((prev) => [...prev, created]);
       } else {
-        if (!selected) throw new Error("Cliente nÃ£o selecionado para ediÃ§Ã£o.");
+        if (!selected) throw new Error("Cliente não selecionado para edição.");
         const payload = toUpdatePayload(form);
         const updated = await updateClient(selected.id, payload);
         setClients((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
@@ -239,7 +239,7 @@ export function ClientsPage() {
 
       closeAllModals();
     } catch (err) {
-      setModalError(safeErrorMessage(err, "NÃ£o foi possÃ­vel salvar o cliente."));
+      setModalError(safeErrorMessage(err, "Não foi possível salvar o cliente."));
     } finally {
       setSaving(false);
     }
@@ -268,7 +268,7 @@ export function ClientsPage() {
             <input
               value={searchCpfCnpj}
               onChange={(e) => setSearchCpfCnpj(normalizeCpfCnpjDigits(e.target.value))}
-              placeholder="Buscar por CPF/CNPJ…"
+              placeholder="Buscar por CPF/CNPJ."
               inputMode="numeric"
               maxLength={14}
               style={{
@@ -324,7 +324,7 @@ export function ClientsPage() {
                       <div style={{ fontWeight: 800 }}>{c.name}</div>
                       <Muted>
                         {c.city || c.district
-                          ? `${c.city || ""}${c.city && c.district ? " â€¢ " : ""}${c.district || ""}`
+                          ? `${c.city || ""}${c.city && c.district ? " • " : ""}${c.district || ""}`
                           : "-"}
                       </Muted>
                     </td>
@@ -359,8 +359,8 @@ export function ClientsPage() {
         title={mode === "CREATE" ? "Novo cliente" : "Editar cliente"}
         subtitle={
           mode === "CREATE"
-            ? "Preencha os dados abaixo e clique em â€œSalvarâ€."
-            : "Atualize os dados do cliente e clique em â€œSalvarâ€."
+            ? "Preencha os dados abaixo e clique em “Salvar”."
+            : "Atualize os dados do cliente e clique em “Salvar”."
         }
         isOpen={isFormOpen}
         onClose={closeAllModals}
@@ -386,7 +386,7 @@ export function ClientsPage() {
               <input
                 value={form.phone}
                 onChange={(e) => setForm((p) => ({ ...p, phone: normalizePhoneDigits(e.target.value) }))}
-                placeholder="Somente nÃºmeros (11 dÃ­gitos)"
+                placeholder="Somente números (11 dígitos)"
                 required
                 inputMode="numeric"
                 maxLength={11}
@@ -408,7 +408,7 @@ export function ClientsPage() {
               <input
                 value={form.cpfCnpj}
                 onChange={(e) => setForm((p) => ({ ...p, cpfCnpj: normalizeCpfCnpjDigits(e.target.value) }))}
-                placeholder="Somente nÃºmeros (11 ou 14 dÃ­gitos)"
+                placeholder="Somente números (11 ou 14 dígitos)"
                 required
                 inputMode="numeric"
                 maxLength={14}
@@ -430,14 +430,14 @@ export function ClientsPage() {
               <input
                 value={form.zipCode}
                 onChange={(e) => setForm((p) => ({ ...p, zipCode: normalizeZipDigits(e.target.value) }))}
-                placeholder="Somente nÃºmeros (8 dÃ­gitos)"
+                placeholder="Somente números (8 dígitos)"
                 inputMode="numeric"
                 maxLength={8}
                 disabled={saving}
               />
             </Field>
 
-            <Field label="EndereÃ§o" full>
+            <Field label="Endereço" full>
               <input
                 value={form.address}
                 onChange={(e) => setForm((p) => ({ ...p, address: e.target.value.slice(0, 160) }))}
@@ -479,14 +479,14 @@ export function ClientsPage() {
           </FormGrid>
 
           <div style={{ marginTop: 10 }}>
-            <Muted>* Campos obrigatÃ³rios</Muted>
+            <Muted>* Campos obrigatórios</Muted>
           </div>
         </form>
       </Modal>
 
       <Modal
         title="Visualizar cliente"
-        subtitle={selected ? `ID: ${selected.id} â€¢ Cadastrado em: ${formatDateTimeBR(selected.createdAt)}` : ""}
+        subtitle={selected ? `ID: ${selected.id} • Cadastrado em: ${formatDateTimeBR(selected.createdAt)}` : ""}
         isOpen={isViewOpen}
         onClose={closeAllModals}
         disableClose={saving}
@@ -510,9 +510,9 @@ export function ClientsPage() {
             </div>
 
             <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>EndereÃ§o</div>
+              <div style={{ fontWeight: 800 }}>Endereço</div>
               <div><strong>CEP:</strong> {selected.zipCode || "-"}</div>
-              <div><strong>EndereÃ§o:</strong> {selected.address || "-"}</div>
+              <div><strong>Endereço:</strong> {selected.address || "-"}</div>
               <div><strong>Bairro:</strong> {selected.district || "-"}</div>
               <div><strong>Cidade:</strong> {selected.city || "-"}</div>
               <div><strong>Estado:</strong> {selected.state || "-"}</div>
@@ -530,6 +530,7 @@ export function ClientsPage() {
     </section>
   );
 }
+
 
 
 

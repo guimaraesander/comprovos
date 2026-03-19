@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Card } from "../components/Card";
 import { Table } from "../components/Table";
 import { AlertError, Muted } from "../components/Alert";
@@ -211,7 +211,7 @@ export function DashboardPage() {
             <div className="page-head">
         <div>
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Vis�o geral do sistema</p>
+          <p className="page-subtitle">{"Visão geral do sistema"}</p>
         </div>
         <div className="page-actions">
           <div className={styles.headerActions}>
@@ -236,7 +236,7 @@ export function DashboardPage() {
             <div className={styles.heroInner}>
               <div>
                 <p className={styles.heroKicker}>Painel Executivo</p>
-                <h2 className={styles.heroTitle}>Visão Geral do Dia</h2>
+                <h2 className={styles.heroTitle}>{"Visão Geral do Dia"}</h2>
               </div>
             </div>
           </Card>

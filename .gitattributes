@@ -1,0 +1,2 @@
+﻿*       text eol=lf
+*.{ts,tsx,js,jsx,json,css,md} text eol=lf

@@ -1,4 +1,4 @@
-# ComprovOS — Frontend
+﻿# ComprovOS — Frontend
 
 Frontend web do ComprovOS (painel interno), feito com **React + Vite + TypeScript**.
 
@@ -112,6 +112,12 @@ Assim, novas páginas não quebram o CSS.
 cd frontend
 npm run build
 
-2) Testar a página no navegador (rotas relevantes)
+2) Rodar validação de encoding:
 
-3) Só então fazer commit e push
+cd frontend
+npm run check:encoding
+
+3) Testar a página no navegador (rotas relevantes)
+
+4) Só então fazer commit e push
+
