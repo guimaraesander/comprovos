@@ -187,14 +187,14 @@ export function DashboardPage() {
   }, [recentOrders, recentClients]);
 
   const kpis: KpiCardProps[] = [
-    { label: "Ordens no total", value: totalOrders, tone: "blue" },
+    { label: "Ordens no Total", value: totalOrders, tone: "blue" },
     {
       label: "Pendentes",
       value: pendingCount,
       tone: "amber",
     },
-    { label: "Em manutencao", value: inProgressCount, tone: "emerald" },
-    { label: "Concluidas", value: doneCount, tone: "pink" },
+    { label: "Em Manutenção", value: inProgressCount, tone: "emerald" },
+    { label: "Concluídas", value: doneCount, tone: "pink" },
     { label: "Clientes", value: totalClients, tone: "slate" },
   ];
 
