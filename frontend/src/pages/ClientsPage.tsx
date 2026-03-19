@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
   createClient,
@@ -43,7 +43,7 @@ const initialForm: FormState = {
 
 function safeErrorMessage(err: unknown, fallback: string) {
   if (axios.isAxiosError(err)) {
-    if (!err.response) return "Não foi possível conectar ao servidor.";
+    if (!err.response) return "NÃ£o foi possÃ­vel conectar ao servidor.";
     return (err.response.data as any)?.message || fallback;
   }
   if (err instanceof Error) return err.message;
@@ -133,7 +133,7 @@ export function ClientsPage() {
       const data = await listClients();
       setClients(Array.isArray(data) ? data : []);
     } catch (err) {
-      setPageError(safeErrorMessage(err, "Não foi possível carregar a lista de clientes."));
+      setPageError(safeErrorMessage(err, "NÃ£o foi possÃ­vel carregar a lista de clientes."));
     } finally {
       setLoading(false);
     }
@@ -221,7 +221,7 @@ export function ClientsPage() {
     if (!phoneDigits) return setModalError("Informe o telefone do cliente.");
     if (!cpfCnpjDigits) return setModalError("Informe o CPF/CNPJ do cliente.");
     if (!validateCpfCnpjDigits(cpfCnpjDigits)) {
-      return setModalError("CPF deve ter 11 dígitos ou CNPJ 14 dígitos.");
+      return setModalError("CPF deve ter 11 dÃ­gitos ou CNPJ 14 dÃ­gitos.");
     }
 
     setSaving(true);
@@ -231,7 +231,7 @@ export function ClientsPage() {
         const created = await createClient(payload);
         setClients((prev) => [...prev, created]);
       } else {
-        if (!selected) throw new Error("Cliente não selecionado para edição.");
+        if (!selected) throw new Error("Cliente nÃ£o selecionado para ediÃ§Ã£o.");
         const payload = toUpdatePayload(form);
         const updated = await updateClient(selected.id, payload);
         setClients((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
@@ -239,7 +239,7 @@ export function ClientsPage() {
 
       closeAllModals();
     } catch (err) {
-      setModalError(safeErrorMessage(err, "Não foi possível salvar o cliente."));
+      setModalError(safeErrorMessage(err, "NÃ£o foi possÃ­vel salvar o cliente."));
     } finally {
       setSaving(false);
     }
@@ -258,7 +258,7 @@ export function ClientsPage() {
 
   return (
     <section className="content-body">
-            <div className="page-head">
+      <div className="page-head">
         <div>
           <h1 className="page-title">Clientes</h1>
           <p className="page-subtitle">Cadastro e consulta de clientes.</p>
@@ -278,23 +278,22 @@ export function ClientsPage() {
                 border: "1px solid rgba(0,0,0,0.12)",
                 outline: "none",
                 minWidth: 240,
+              }}
+            />
+          </div>
+          <Button type="button" variant="secondary" onClick={applySearch} disabled={loading}>
+            Buscar
+          </Button>
+
+          <Button type="button" variant="secondary" onClick={clearSearch} disabled={loading}>
+            Limpar
+          </Button>
+
+          <Button type="button" variant="primary" onClick={openCreate} disabled={loading}>
+            Novo cliente
+          </Button>
         </div>
       </div>
-
-            <Button type="button" variant="secondary" onClick={applySearch} disabled={loading}>
-              Buscar
-            </Button>
-
-            <Button type="button" variant="secondary" onClick={clearSearch} disabled={loading}>
-              Limpar
-            </Button>
-
-            <Button type="button" variant="primary" onClick={openCreate} disabled={loading}>
-              Novo cliente
-            </Button>
-          </div>
-        }
-      />
 
       {pageError && <AlertError className="mb-12">{pageError}</AlertError>}
 
@@ -325,7 +324,7 @@ export function ClientsPage() {
                       <div style={{ fontWeight: 800 }}>{c.name}</div>
                       <Muted>
                         {c.city || c.district
-                          ? `${c.city || ""}${c.city && c.district ? " • " : ""}${c.district || ""}`
+                          ? `${c.city || ""}${c.city && c.district ? " â€¢ " : ""}${c.district || ""}`
                           : "-"}
                       </Muted>
                     </td>
@@ -360,8 +359,8 @@ export function ClientsPage() {
         title={mode === "CREATE" ? "Novo cliente" : "Editar cliente"}
         subtitle={
           mode === "CREATE"
-            ? "Preencha os dados abaixo e clique em “Salvar”."
-            : "Atualize os dados do cliente e clique em “Salvar”."
+            ? "Preencha os dados abaixo e clique em â€œSalvarâ€."
+            : "Atualize os dados do cliente e clique em â€œSalvarâ€."
         }
         isOpen={isFormOpen}
         onClose={closeAllModals}
@@ -387,7 +386,7 @@ export function ClientsPage() {
               <input
                 value={form.phone}
                 onChange={(e) => setForm((p) => ({ ...p, phone: normalizePhoneDigits(e.target.value) }))}
-                placeholder="Somente números (11 dígitos)"
+                placeholder="Somente nÃºmeros (11 dÃ­gitos)"
                 required
                 inputMode="numeric"
                 maxLength={11}
@@ -409,7 +408,7 @@ export function ClientsPage() {
               <input
                 value={form.cpfCnpj}
                 onChange={(e) => setForm((p) => ({ ...p, cpfCnpj: normalizeCpfCnpjDigits(e.target.value) }))}
-                placeholder="Somente números (11 ou 14 dígitos)"
+                placeholder="Somente nÃºmeros (11 ou 14 dÃ­gitos)"
                 required
                 inputMode="numeric"
                 maxLength={14}
@@ -431,14 +430,14 @@ export function ClientsPage() {
               <input
                 value={form.zipCode}
                 onChange={(e) => setForm((p) => ({ ...p, zipCode: normalizeZipDigits(e.target.value) }))}
-                placeholder="Somente números (8 dígitos)"
+                placeholder="Somente nÃºmeros (8 dÃ­gitos)"
                 inputMode="numeric"
                 maxLength={8}
                 disabled={saving}
               />
             </Field>
 
-            <Field label="Endereço" full>
+            <Field label="EndereÃ§o" full>
               <input
                 value={form.address}
                 onChange={(e) => setForm((p) => ({ ...p, address: e.target.value.slice(0, 160) }))}
@@ -480,14 +479,14 @@ export function ClientsPage() {
           </FormGrid>
 
           <div style={{ marginTop: 10 }}>
-            <Muted>* Campos obrigatórios</Muted>
+            <Muted>* Campos obrigatÃ³rios</Muted>
           </div>
         </form>
       </Modal>
 
       <Modal
         title="Visualizar cliente"
-        subtitle={selected ? `ID: ${selected.id} • Cadastrado em: ${formatDateTimeBR(selected.createdAt)}` : ""}
+        subtitle={selected ? `ID: ${selected.id} â€¢ Cadastrado em: ${formatDateTimeBR(selected.createdAt)}` : ""}
         isOpen={isViewOpen}
         onClose={closeAllModals}
         disableClose={saving}
@@ -511,9 +510,9 @@ export function ClientsPage() {
             </div>
 
             <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>Endereço</div>
+              <div style={{ fontWeight: 800 }}>EndereÃ§o</div>
               <div><strong>CEP:</strong> {selected.zipCode || "-"}</div>
-              <div><strong>Endereço:</strong> {selected.address || "-"}</div>
+              <div><strong>EndereÃ§o:</strong> {selected.address || "-"}</div>
               <div><strong>Bairro:</strong> {selected.district || "-"}</div>
               <div><strong>Cidade:</strong> {selected.city || "-"}</div>
               <div><strong>Estado:</strong> {selected.state || "-"}</div>
