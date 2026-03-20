@@ -17,8 +17,8 @@ export function LoginPage() {
   const state = location.state as LocationState | null;
   const redirectTo = state?.from?.pathname || "/";
 
-  const [email, setEmail] = useState("admin@comprovos.com");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -126,7 +126,13 @@ export function LoginPage() {
         </form>
 
         <div className="auth-footer">
-          <small>Ambiente de teste: admin@comprovos.com / 123456</small>
+          <small>
+            Ambiente de teste:
+            <br />
+            - ADM: admin@comprovos.com / 123456
+            <br />
+            - TECNICO: tecnico@comprovos.com / 123456
+          </small>
         </div>
       </section>
     </main>
