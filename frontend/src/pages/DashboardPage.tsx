@@ -219,6 +219,15 @@ export function DashboardPage() {
               <span className={styles.dot} />
               <span>{lastUpdatedAt ? `Atualizado: ${formatDateTimeBR(lastUpdatedAt)}` : "Carregando..."}</span>
             </div>
+            <button
+              type="button"
+              className={styles.headerActionBtn}
+              onClick={() => {
+                void loadAll();
+              }}
+            >
+              Atualizar
+            </button>
             <a href="/service-orders" className={styles.headerActionBtn}>
               Abrir OS
             </a>
