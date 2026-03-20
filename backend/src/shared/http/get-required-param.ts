@@ -1,3 +1,5 @@
+﻿import { HttpError } from "../../utils/http-error";
+
 type ParamsValue = string | string[] | undefined;
 
 type ParamsLike = Record<string, ParamsValue>;
@@ -10,8 +12,8 @@ export function getRequiredParam(
   const value = params[key];
 
   if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(errorMessage || `Parametro '${key}' nao informado`);
+    throw HttpError.badRequest(errorMessage || `Parametro "${key}" e obrigatorio.`);
   }
 
-  return value;
+  return value.trim();
 }

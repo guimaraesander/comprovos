@@ -1,12 +1,18 @@
 import type { NextFunction, Request, Response } from "express";
+import { ZodError } from "zod";
 
 type HttpError = Error & {
   statusCode?: number;
   code?: string;
   details?: unknown;
+  issues?: unknown;
 };
 
 function getSafeStatusCode(error: HttpError) {
+  if (error instanceof ZodError) {
+    return 400;
+  }
+
   if (
     typeof error.statusCode === "number" &&
     Number.isInteger(error.statusCode) &&
@@ -20,11 +26,23 @@ function getSafeStatusCode(error: HttpError) {
 }
 
 function getErrorResponseMessage(statusCode: number, error: HttpError, isDev: boolean) {
+  if (error instanceof ZodError) {
+    return "Erro de validação dos dados enviados.";
+  }
+
   if (statusCode >= 500 && !isDev) {
     return "Erro interno do servidor.";
   }
 
   return error.message || "Erro interno do servidor.";
+}
+
+function getValidationDetails(error: ZodError) {
+  return error.issues.map((issue) => ({
+    path: issue.path.join("."),
+    code: issue.code,
+    message: issue.message,
+  }));
 }
 
 export function errorHandler(
@@ -68,6 +86,10 @@ export function errorHandler(
 
   if (statusCode < 500 && typeof error.details !== "undefined") {
     responseBody.details = error.details;
+  }
+
+  if (error instanceof ZodError) {
+    responseBody.details = getValidationDetails(error);
   }
 
   if (isDev && error.stack) {
