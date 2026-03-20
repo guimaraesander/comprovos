@@ -1,19 +1,19 @@
-## Checklist de Entrega — Desenvolvimento de Software em Nuvem
+## Checklist de Entrega â€” Desenvolvimento de Software em Nuvem
 
 ### 1) Requisitos Funcionais (Doc original)
 - [x] Autenticacao e autorizacao (JWT + roles ADMIN/TECNICO no backend e rota protegida no frontend).
 - [x] API REST documentada com Swagger/OpenAPI.
 - [x] Operacoes CRUD completas para entidades do sistema (clientes, OS, usuarios).
-- [ ] Validacao de dados no back-end com retorno padronizado de erro (Zod validando, mas faltam respostas de validacao 100% consistentes).
+- [x] Validacao de dados no back-end com retorno padronizado de erro (Zod validando, com retorno de 400 e details).
 - [x] Registro de logs de acesso e erro no backend.
 
 ### 2) Arquitetura Tecnica Obrigatoria
 - [x] Front-end com React (moderno).
-- [ ] Deploy em servico de nuvem (frontend: Vercel preparado, validar deploy ativo e URL no README).
+- [x] Deploy em servico de nuvem (frontend: Vercel ativo com URL no README).
 - [x] Back-end containerizado com Docker.
-- [ ] Deploy em servico de nuvem para o back-end (CI/CD configurado; validar prova de deploy ativo e URL no README).
+- [x] Deploy em servico de nuvem para o back-end (CI/CD com webhook e URL ativa no README).
 - [x] Banco PostgreSQL por datasource externo (via `DATABASE_URL`).
-- [ ] Evidencia explicita de persistencia fora do container (colocar no README a instancia em nuvem usada: Supabase/Neon/RDS/etc).
+- [x] Evidencia explicita de persistencia fora do container no README (instancia SQL gerenciada via `DATABASE_URL`).
 
 ### 3) DevOps e Nuvem
 - [x] Docker no back-end.
@@ -22,7 +22,7 @@
 
 ### 4) Seguranca e Boas Praticas
 - [x] Uso de variaveis de ambiente (ex.: `DATABASE_URL`, `JWT_SECRET`, `PORT`).
-- [ ] Remover fallback de `JWT_SECRET` inseguro no codigo (`backend/src/config/env.ts`) e falhar explicitamente quando nao configurado.
+- [x] Remover fallback de `JWT_SECRET` inseguro no codigo (`backend/src/config/env.ts`) e falhar explicitamente quando nao configurado.
 - [x] Protecao de rotas autenticadas no backend e frontend.
 - [x] Tratamento centralizado de erro no backend.
 - [ ] Separacao melhorada dev/prod (comportamento de erro e secrets por ambiente, sem fallback permissivo).
@@ -50,27 +50,27 @@
 ---
 
 ## Pendencias criticas (fechar antes da entrega final)
-1. [ ] Ajustar tratamento de erro do Zod para retornar `400` de validacao de forma consistente.
-2. [ ] Remover fallback de `JWT_SECRET` e exigir configuracao explicita.
-3. [x] Etapa de deploy automatico no CI/CD para backend já adicionada no workflow.
-4. [ ] Adicionar prova de deploy do frontend/backend no README (links ativos).
+1. [x] Ajustar tratamento de erro do Zod para retornar `400` de validacao de forma consistente.
+2. [x] Remover fallback de `JWT_SECRET` e exigir configuracao explicita.
+3. [x] Etapa de deploy automatico no CI/CD para backend jÃ¡ adicionada no workflow.
+4. [x] Adicionar prova de deploy do frontend/backend no README (links ativos).
 5. [ ] Incluir itens faltantes de entrega academica: relatorio tecnico e video.
 
 ## Plano de correcao em 7 tarefas (ordem de execucao)
 
 Objetivo: transformar os itens pendentes em entregaveis aprovaveis com menor risco e maximo impacto.
 
-1) [ ] Validar erros de entrada no backend (Alta, esforco: 1h)
+1) [x] Validar erros de entrada no backend (Alta, esforco: 1h)
 - Consolidar `ZodError` no `backend/src/middlewares/error-handler.ts`.
 - Retornar `400` com `details` de validacao para `parse` e parametros obrigatorios.
 - Garantir resposta padronizada de erro para frontend/testes.
 
-2) [ ] Ajustar parametros obrigatorios com erro de cliente (Media, esforco: 30min)
+2) [x] Ajustar parametros obrigatorios com erro de cliente (Media, esforco: 30min)
 - Revisar `backend/src/shared/http/get-required-param.ts` e `backend/src/utils/get-required-param.ts`.
 - Trocar erro generico por `HttpError.badRequest`.
 - Definir mensagem e codigo consistentes.
 
-3) [ ] Endurecer segredos de ambiente (Alta, esforco: 30min)
+3) [x] Endurecer segredos de ambiente (Alta, esforco: 30min)
 - Alterar `backend/src/config/env.ts` para falhar quando `JWT_SECRET` faltar.
 - Remover fallback inseguro.
 - Documentar no README variaveis obrigatorias e exemplo minimo.
@@ -80,7 +80,7 @@ Objetivo: transformar os itens pendentes em entregaveis aprovaveis com menor ris
 - Secrets definidos no GitHub Actions.
 - Publicar e validar URL final no README.
 
-5) [ ] Finalizar evidencia de deploy front-end e back-end (Media, esforco: 45min)
+5) [x] Finalizar evidencia de deploy front-end e back-end (Media, esforco: 45min)
 - Confirmar `frontend/vercel.json` e registrar URL de producao no README.
 - Registrar link ativo do endpoint backend em producao e smoke test de `/health` ou `/api/docs`.
 

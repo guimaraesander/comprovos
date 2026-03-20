@@ -249,3 +249,13 @@ Preencher com os nomes completos dos integrantes da equipe.
 ## Licença
 
 Uso acadêmico.
+
+## Deploy em producao (links ativos)
+- Frontend (Vercel): https://comprovos.vercel.app
+- Backend (Render): https://comprovos-backend.onrender.com
+- Swagger (backend): https://comprovos-backend.onrender.com/api-docs
+- Health check: https://comprovos-backend.onrender.com/health
+
+### Evidencia de infraestrutura
+- Banco em PostgreSQL externamente gerenciado via DATABASE_URL (fora do container).
+

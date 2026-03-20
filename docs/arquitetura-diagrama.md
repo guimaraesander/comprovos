@@ -16,10 +16,10 @@ O ComprovOS é um sistema web para gerenciamento de ordens de serviço (OS) e ac
 5. Dados são persistidos no PostgreSQL.
 6. API expõe documentação em `/docs`.
 
-## Deploy (Planejado)
-- **Frontend**: Vercel
-- **Backend**: Render ou Railway (com Docker)
-- **Banco**: Supabase ou Neon (PostgreSQL gerenciado)
+## Deploy (Implementado)
+- **Frontend**: https://comprovos.vercel.app (Vercel)
+- **Backend**: https://comprovos-backend.onrender.com (Render com Docker)
+- **Banco**: PostgreSQL gerenciado via `DATABASE_URL` (Supabase/Neon conforme ambiente)
 
 ## Segurança e Qualidade
 - JWT para autenticação
