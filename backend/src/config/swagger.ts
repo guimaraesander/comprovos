@@ -1,6 +1,23 @@
 import swaggerJSDoc from "swagger-jsdoc";
 import { Express } from "express";
 import swaggerUi from "swagger-ui-express";
+import { env } from "./env";
+
+function normalizeSwaggerUrl(value: string) {
+  const trimmed = value.trim().replace(/\/+$/, "");
+
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+}
+
+function getSwaggerServerUrl() {
+  const envUrl = process.env.SWAGGER_SERVER_URL?.trim();
+
+  if (envUrl && envUrl.length > 0) {
+    return normalizeSwaggerUrl(envUrl);
+  }
+
+  return normalizeSwaggerUrl(`http://localhost:${env.PORT}`);
+}
 
 const swaggerDefinition = {
   openapi: "3.0.0",
@@ -97,7 +114,15 @@ const swaggerDefinition = {
 };
 
 const options: swaggerJSDoc.Options = {
-  definition: swaggerDefinition,
+  definition: {
+    ...swaggerDefinition,
+    servers: [
+      {
+        url: getSwaggerServerUrl(),
+        description: "Servidor da API",
+      },
+    ],
+  },
   apis: ["src/modules/**/*.routes.ts"],
 };
 
