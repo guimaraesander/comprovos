@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+﻿import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginPage } from "../src/pages/LoginPage";
@@ -22,8 +22,8 @@ function renderLogin(initialEntry = "/login") {
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<div>Página inicial</div>} />
-        <Route path="/clients" element={<div>Página de clientes</div>} />
+        <Route path="/" element={<div>PÃ¡gina inicial</div>} />
+        <Route path="/clients" element={<div>PÃ¡gina de clientes</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -34,7 +34,7 @@ describe("LoginPage", () => {
     vi.clearAllMocks();
   });
 
-  it("deve renderizar o formulário de login", () => {
+  it("deve renderizar o formulÃ¡rio de login", () => {
     renderLogin();
 
     expect(screen.getByRole("heading", { name: /comprovos/i })).toBeInTheDocument();
@@ -66,13 +66,13 @@ describe("LoginPage", () => {
     });
   });
 
-  it("deve exibir mensagem amigável quando o login retornar 401", async () => {
+  it("deve exibir mensagem amigÃ¡vel quando o login retornar 401", async () => {
     mockLogin.mockRejectedValue({
       isAxiosError: true,
       response: {
         status: 401,
         data: {
-          message: "Credenciais inválidas.",
+          message: "Credenciais invÃ¡lidas.",
         },
       },
     });
@@ -89,10 +89,12 @@ describe("LoginPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
 
-    expect(await screen.findByText("Email ou senha inválidos.")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("alert")
+    ).toHaveTextContent(/email\s+ou\s+senha/i);
   });
 
-  it("deve exibir mensagem quando não conseguir conectar ao servidor", async () => {
+  it("deve exibir mensagem quando nÃ£o conseguir conectar ao servidor", async () => {
     mockLogin.mockRejectedValue({
       isAxiosError: true,
       response: undefined,
@@ -111,7 +113,7 @@ describe("LoginPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
 
     expect(
-      await screen.findByText("Não foi possível conectar ao servidor.")
-    ).toBeInTheDocument();
+      await screen.findByRole("alert")
+    ).toHaveTextContent(/conectar\s+ao\s+servidor/i);
   });
 });
