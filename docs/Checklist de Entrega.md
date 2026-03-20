@@ -38,14 +38,14 @@
 - [x] deploy executado no CI com status de sucesso (webhooks acionados conforme configuracao).
 
 ### 6) Colaboracao e Organizacao
-- [ ] Fluxo publico no GitHub, branches por funcionalidade e commits semanticos (nao da para validar apenas pelo codigo local).
+- [ ] Fluxo publico no GitHub, branches por funcionalidade e commits semanticos (validacao pendente no repositorio remoto).
 - [ ] Evidencia de Issues/Projetos (Kanban) no repositorio GitHub.
 
 ### 7) Entregaveis
 - [x] Repositorio com codigo, Dockerfile e README detalhado.
 - [x] Diagrama/descricao de arquitetura presente em `docs/arquitetura-diagrama.md`.
 - [x] Relatorio tecnico (ate 6 paginas) em `docs/relatorio-tecnico.md`.
-- [ ] Video de ate 7 minutos ainda nao incluido (`docs/video-demonstracao.md` aguardando link).
+- [ ] Video de ate 7 minutos ainda nao incluido (`docs/video-demonstracao.md` aguardando URL publica da gravação).
 
 ---
 
@@ -54,7 +54,7 @@
 2. [x] Remover fallback de `JWT_SECRET` e exigir configuracao explicita.
 3. [x] Etapa de deploy automatico no CI/CD para backend jÃ¡ adicionada no workflow.
 4. [x] Adicionar prova de deploy do frontend/backend no README (links ativos).
-5. [ ] Incluir itens faltantes de entrega academica: registrar link do video.
+5. [ ] Registrar link da demonstração em `docs/video-demonstracao.md` (e opcionalmente no README), e validar se segue o tempo limite.
 
 ## Plano de correcao em 7 tarefas (ordem de execucao)
 
@@ -90,7 +90,7 @@ Objetivo: transformar os itens pendentes em entregaveis aprovaveis com menor ris
 - Executar `npm run test:run` em frontend e backend.
 
 7) [ ] Entregaveis academicos finais (Baixa, esforco: 2h)
-- Criar relatorio tecnico (ate 6 paginas) em `docs/relatorio-tecnico.md`.
+- Atualizar relatório técnico com os resultados finais de CI/CD e evidência dos links de produção.
 - Gravar video de ate 7 minutos com arquitetura, funcionalidades e deploy.
 - Atualizar checklist de entrega com status final dos itens 7 e links.
 

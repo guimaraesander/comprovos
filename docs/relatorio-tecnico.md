@@ -80,5 +80,10 @@ O objetivo foi entregar uma aplicacao completa com:
 ## 9. Conclusao
 
 O projeto atendeu os requisitos principais de uma aplicacao para nuvem com backend containerizado,
-CI/CD automatizado e validacao de qualidade. Pendencias remanescentes devem ser apenas de natureza
-apresentacao (links de evidencias e demonstracao em video), sem impacto funcional.
+CI/CD automatizado e validacao de qualidade. As pendencias remanescentes no momento sao pontuais e de natureza documental/apresentacao:
+
+- Evidencias operacionais: URLs de deploy e logs de CI/CD ativos.
+- Demostracao em video: gerar e anexar o link publico em `docs/video-demonstracao.md`.
+- Evidencia de governanca no GitHub (issues/kanban/branches semanticas): validar no repositorio remoto.
+
+Conclusao: tecnicamente o sistema encontra-se apto para entrega de requisitos funcionais e arquitetura em nuvem, com ajustes finais de evidenciacao academica.
