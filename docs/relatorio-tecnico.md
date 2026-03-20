@@ -1,89 +1,132 @@
-# Relatorio Tecnico - ComprovOS
+﻿# Relatório Técnico — ComprovOS
 
-## 1. Identificacao
+## 1) Identificação do projeto
 
-- Projeto: ComprovOS
-- Disciplina: Desenvolvimento de Software em Nuvem
-- Periodo: 2026
-- Integrantes: a completar pela equipe
-- Repositorio: https://github.com/guimaraesander/comprovos
+- Projeto: **ComprovOS**
+- Disciplina: **Desenvolvimento de Software em Nuvem**
+- Período: **2026**
+- Repositório: <https://github.com/guimaraesander/comprovos>
+- Módulos principais: `backend/`, `frontend/`, `.github/workflows/`, `docs/`
 
-## 2. Objetivo
+## 2) Objetivo do trabalho
 
-O ComprovOS e uma aplicacao web para controle de ordem de servico e clientes de assistencia tecnica.
-O objetivo foi entregar uma aplicacao completa com:
+Desenvolver e implantar uma aplicação web para controle de ordens de serviço e clientes de assistência técnica, composta por:
 
-- Autenticacao e autorizacao (JWT)
-- CRUD de clientes, usuarios e ordens de servico
-- Status de ordens e controle de orcamentos
-- Documentacao de API com Swagger/OpenAPI
-- Observabilidade basica com logs estruturados
-- CI/CD com build, testes e deploy continuo
+- autenticação e autorização com JWT e controle por perfil
+- API RESTful para operações de negócio
+- interface web para operação interna
+- persistência em banco relacional gerenciado
+- documentação técnica da API (Swagger/OpenAPI)
+- observabilidade básica, testes automatizados e pipeline CI/CD com deploy
 
-## 3. Arquitetura
+## 3) Arquitetura implementada
 
-### Arquitetura geral
+### 3.1 Arquitetura geral
 
-- Frontend: React + Vite + TypeScript
-- API: Node.js + Express + TypeScript
-- Banco: PostgreSQL (servico gerenciado)
-- ORM: Prisma
+- **Frontend:** React + Vite + TypeScript
+- **Backend:** Node.js + Express + TypeScript
+- **Banco:** PostgreSQL (serviço gerenciado)
+- **ORM:** Prisma
+- **Autenticação:** JWT
+- **Documentação de API:** Swagger/OpenAPI
 
-### Divisao de responsabildades
+### 3.2 Camadas e responsabilidades
 
-- Camada de rota/controle: rotas e controllers por modulo
-- Camada de servico: regras de negocio
-- Persistencia: prisma schemas e Prisma Client
-- Infra: Docker para backend e workflows no GitHub Actions para CI/CD
+- **Frontend:** rotas protegidas, autenticação do usuário e consumo da API.
+- **Backend (camada de rotas/controle):** endpoints REST por domínio (`clients`, `users`, `service-orders`, `auth`).
+- **Backend (camada de serviço):** regras de negócio e transições de status.
+- **Persistência:** Prisma para acesso e modelagem de dados.
+- **Infraestrutura:** Docker para o backend e pipelines em GitHub Actions.
 
-### Comunicacao
+### 3.3 Comunicação
 
-- Frontend consome API via Axios
-- Base path da API: `/api`
-- Docs da API: `/api-docs`
+- O frontend consome o backend pela variável `VITE_API_URL` (`/api`).
+- A API expõe rotas e documentação em `/api` e `/api-docs`.
+- Deploy de produção registrado em:
+  - Frontend: <https://comprovos.vercel.app>
+  - Backend: <https://comprovos-backend.onrender.com>
 
-## 4. Deploy e nuvem
+## 4) Requisitos atendidos
 
-- Frontend: Vercel
-- Backend: Render
-- Banco de dados: URL de conexao externa via `DATABASE_URL`
-- CI/CD: GitHub Actions com jobs backend, frontend e deploy via webhooks
+## 4.1 Requisitos funcionais
 
-## 5. Segurança e boas praticas
+- Autenticação/autorização (JWT + perfis ADMIN/TECNICO): **atendido**
+- API documentada (Swagger/OpenAPI): **atendido**
+- Operações CRUD completas (clientes, usuários, ordens): **atendido**
+- Validação de dados no backend: **atendido (com handler central de validação/erros)**
+- Logs de acesso e erro: **atendido**
 
-- Uso de variaveis de ambiente para segredos e configuracoes (JWT_SECRET, DATABASE_URL, PORT, NODE_ENV)
-- Erros centralizados em middleware com retorno padronizado e logs estruturados
-- Rotas protegidas por middleware de autenticacao e roles
-- Fallback de variaveis obrigatorias removido para evitar deploys sem segredo configurado
+## 4.2 Requisitos de arquitetura e nuvem
 
-## 6. Testes e qualidade
+- Front-end moderno (React): **atendido**
+- Front-end em nuvem (Vercel): **atendido**
+- Backend containerizado (Docker): **atendido**
+- Deploy em nuvem do backend: **atendido**
+- Banco gerenciado fora do container: **atendido** (via `DATABASE_URL`)
 
-- Backend: testes com Vitest + Supertest
-- Frontend: testes com Vitest + Testing Library
-- Cobertura gerada com `npm run test:coverage` em backend e frontend
-- Resultados do CI divulgados em `.github/workflows/ci.yml`
+## 4.3 DevOps e operações
 
-## 7. Contribuicoes da equipe
+- Pipeline com build e testes no backend: **atendido**
+- Pipeline com build e testes no frontend: **atendido**
+- Deploy automático via CI/CD: **atendido** (webhooks)
+- Evidência de execução publicada no repositório: **atendido** (workflow)
 
-- Estruturacao do backend em modulos por dominio
-- Implementacao de CRUD e regras de transicao de status
-- Implementacao de middlewares de autenticacao e tratamento de erro
-- Configuracao de CI/CD e ajustes de deploy
+## 4.4 Segurança e boas práticas
 
-## 8. Dificuldades e solucao
+- Uso de variáveis de ambiente (`DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`): **atendido**
+- Proteção de rotas autenticadas: **atendido**
+- Tratamento centralizado de erros: **atendido**
+- Separação dev/test/prod observável no runtime: **atendido (em evolução, sem fallback inseguro de segredos)**
 
-- Configuracao de workflow com dependencias divergentes entre ambiente local e GitHub
-- Ajuste de lockfile e scripts para reduzir falhas de CI
-- Padronizacao de erros de validacao via handler central
-- Ajustes de ambiente para garantir comportamento explicito por contexto
+## 4.5 Testes e qualidade
 
-## 9. Conclusao
+- Testes de backend com Vitest + Supertest: **atendido**
+- Testes de frontend (mínimo e relevantes): **atendido**
+- Cobertura automática: **pendente** (comando disponível, conforme versão do ambiente local)
 
-O projeto atendeu os requisitos principais de uma aplicacao para nuvem com backend containerizado,
-CI/CD automatizado e validacao de qualidade. As pendencias remanescentes no momento sao pontuais e de natureza documental/apresentacao:
+## 4.6 Colaboração (itens acadêmicos)
 
-- Evidencias operacionais: URLs de deploy e logs de CI/CD ativos.
-- Demostracao em video: gerar e anexar o link publico em `docs/video-demonstracao.md`.
-- Evidencia de governanca no GitHub (issues/kanban/branches semanticas): validar no repositorio remoto.
+- Repositório público: **pendente (validar no repositório final)**
+- Branches por funcionalidade: **pendente (validar histórico)**
+- Commits semânticos: **pendente (validar histórico)**
+- Issues/Kanban no GitHub: **pendente (validar no repositório final)**
 
-Conclusao: tecnicamente o sistema encontra-se apto para entrega de requisitos funcionais e arquitetura em nuvem, com ajustes finais de evidenciacao academica.
+## 5) Evidências técnicas
+
+- Workflow CI/CD: `.github/workflows/ci.yml`
+- Deploy e validação: <https://github.com/guimaraesander/comprovos/actions/workflows/ci.yml>
+- Backend em produção: <https://comprovos-backend.onrender.com>
+- Frontend em produção: <https://comprovos.vercel.app>
+- API docs: <https://comprovos-backend.onrender.com/api-docs>
+- Health check: <https://comprovos-backend.onrender.com/health>
+
+## 6) Decisões técnicas e riscos controlados
+
+Durante o desenvolvimento, foi registrada uma advertência de compatibilidade do Prisma:
+
+- O projeto usa `datasource` com `url` em `backend/prisma/schema.prisma`.
+- Há aviso de migração para o novo formato em versões mais recentes da ferramenta.
+- A alteração desta configuração foi mantida postergada para não introduzir regressão imediatamente antes da entrega.
+
+Este ponto está documentado como limitação técnica e não impede o funcionamento atual da solução.
+
+## 7) Execução e validação realizada
+
+- Testes automatizados do frontend e backend executados com sucesso no estado atual de implementação.
+- Correções realizadas para garantir comportamento de erro amigável na autenticação.
+- Pipeline principal executado com sucesso em ambiente de integração.
+- Interface e fluxo de login validados para:
+  - credenciais válidas;
+  - credenciais inválidas (mensagem amigável);
+  - indisponibilidade de backend (mensagem de conexão).
+
+## 8) Conclusão
+
+A solução cumpre os requisitos técnicos centrais da disciplina, com arquitetura em nuvem, backend em container, documentação de API, autenticação protegida, rotinas de teste e pipeline com CI/CD.
+
+Pontos pendentes para encerramento acadêmico final:
+
+- comprovar formalmente aspectos de governança no GitHub (colaboração e workflow público);
+- incluir vídeo de demonstração (até 7 min) com link em `docs/video-demonstracao.md`.
+
+Portanto, no que tange ao funcionamento técnico e requisitos arquiteturais, o projeto encontra-se apto para entrega.
