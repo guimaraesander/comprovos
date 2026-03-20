@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+﻿import { FormEvent, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
@@ -23,7 +23,7 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // ✅ Evita navegar no meio do render com navigate(), usando Navigate é mais seguro
+  // âœ… Evita navegar no meio do render com navigate(), usando Navigate Ã© mais seguro
   if (isAuthenticated) {
     return <Navigate to={redirectTo} replace />;
   }
@@ -35,23 +35,23 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // ✅ Mantém compatibilidade com o seu AuthContext atual
+      // âœ… MantÃ©m compatibilidade com o seu AuthContext atual
       await login({ email, password });
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      // ✅ Sem resposta da API: servidor fora do ar / rede / CORS
+      // âœ… Sem resposta da API: servidor fora do ar / rede / CORS
       if (axios.isAxiosError(error) && !error.response) {
-        setErrorMessage("Não foi possível conectar ao servidor.");
+        setErrorMessage("NÃ£o foi possÃ­vel conectar ao servidor.");
       }
-      // ✅ Erro com resposta da API
+      // âœ… Erro com resposta da API
       else if (axios.isAxiosError(error)) {
         const status = error.response?.status;
         const apiMessage = (error.response?.data as { message?: string } | undefined)?.message;
 
         if (status === 401) {
-          setErrorMessage("Email ou senha inválidos.");
+          setErrorMessage("Email ou senha invÃ¡lidos.");
         } else if (status === 400) {
-          setErrorMessage("Dados inválidos. Verifique email e senha.");
+          setErrorMessage("Dados invÃ¡lidos. Verifique email e senha.");
         } else {
           setErrorMessage(apiMessage || "Falha ao realizar login.");
         }
@@ -80,7 +80,7 @@ export function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@comprovos.com"
+              placeholder="email@comprovos.com"
               required
               autoComplete="username"
             />
@@ -131,10 +131,11 @@ export function LoginPage() {
             <br />
             - ADM: admin@comprovos.com / 123456
             <br />
-            - TECNICO: tecnico@comprovos.com / 123456
+            - TÉCNICO: tecnico@comprovos.com / 123456
           </small>
         </div>
       </section>
     </main>
   );
 }
+
