@@ -1,12 +1,13 @@
 /** @vitest-environment jsdom */
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { LoginPage } from './LoginPage';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import '@testing-library/jest-dom/vitest';
 
-// 🛡️ Simula o localStorage para o teste não quebrar no AuthContext
+afterEach(cleanup);
+
 vi.stubGlobal('localStorage', {
   getItem: vi.fn(),
   setItem: vi.fn(),
@@ -24,11 +25,28 @@ describe('LoginPage', () => {
       </BrowserRouter>
     );
 
-    // ✅ Agora procuramos especificamente pelo TÍTULO (h1) para não confundir com o rodapé
     expect(screen.getByRole('heading', { name: /ComprovOS/i })).toBeInTheDocument();
-    
-    // ✅ Validações dos outros campos
     expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Entrar/i })).toBeInTheDocument();
+  });
+
+  it('deve permitir digitar no campo de email e senha', () => {
+    render(
+      <BrowserRouter>
+        <AuthProvider>
+          <LoginPage />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+
+    const emailInput = screen.getByPlaceholderText(/admin@comprovos.com/i);
+    const passwordInput = screen.getByLabelText(/senha/i);
+
+    // Simula a digitação usando fireEvent
+    fireEvent.change(emailInput, { target: { value: 'atila@teste.com' } });
+    fireEvent.change(passwordInput, { target: { value: '123456' } });
+
+    expect(emailInput).toHaveValue('atila@teste.com');
+    expect(passwordInput).toHaveValue('123456');
   });
 });
