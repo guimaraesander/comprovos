@@ -11,6 +11,12 @@ app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
 
+app.use((req, res, next) => {
+  const time = new Date().toISOString();
+  console.log(`[${time}] ${req.method} em ${req.url}`);
+  next();
+});
+
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",

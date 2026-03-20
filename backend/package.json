@@ -4,16 +4,14 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "test": "vitest run",
     "build": "tsc",
     "start": "node dist/server.js",
-    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push",
-    "seed": "ts-node-dev --transpile-only --exit-child prisma/seed.ts",
-    "test": "vitest",
-    "test:run": "vitest run"
+    "seed": "ts-node-dev --transpile-only --exit-child prisma/seed.ts"
   },
   "prisma": {
     "seed": "ts-node-dev --transpile-only --exit-child prisma/seed.ts"
@@ -39,13 +37,13 @@
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.12.0",
-    "@types/supertest": "^6.0.3",
+    "@types/supertest": "^7.2.0",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "prisma": "^6.15.0",
-    "supertest": "^7.1.1",
+    "supertest": "^7.2.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.0"
   }
 }
