@@ -3,10 +3,13 @@ FROM node:20-alpine AS base
 
 WORKDIR /app
 
-# Dependências do sistema (openssl ajuda o Prisma em alguns ambientes)
 RUN apk add --no-cache openssl
 
-# Copia arquivos de dependência primeiro (melhor cache)
+# Argumento de build para o Prisma
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
+# Copia arquivos de dependência primeiro
 COPY package*.json ./
 
 # Instala todas as dependências (inclui dev deps para build)
@@ -32,6 +35,10 @@ RUN apk add --no-cache openssl
 
 ENV NODE_ENV=production
 
+# Também mantém a variável disponível no runtime
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Copia package files
 COPY package*.json ./
 
@@ -44,11 +51,6 @@ COPY --from=base /app/prisma ./prisma
 COPY --from=base /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=base /app/node_modules/@prisma ./node_modules/@prisma
 
-# Gera Prisma Client no stage final (garante compatibilidade)
-RUN npx prisma generate
-
-# Porta da API
 EXPOSE 3333
 
-# Comando de inicialização
 CMD ["node", "dist/server.js"]
