@@ -13,9 +13,8 @@ describe('Autenticação', () => {
     
     expect(response.status).toBe(401); 
   });
-});
 
-it('deve logar com sucesso com credenciais válidas', async () => {
+  it('deve logar com sucesso com credenciais válidas', async () => {
     const response = await request(app)
       .post('/api/auth/login')
       .send({
@@ -24,7 +23,9 @@ it('deve logar com sucesso com credenciais válidas', async () => {
       });
     
     expect(response.status).toBe(200);
-    
     expect(response.body).toHaveProperty('token');
-    console.log('Token recebido:', response.body.token);
+    
+    // Log apenas para conferência no terminal
+    console.log('Token JWT recebido com sucesso!');
   });
+});
