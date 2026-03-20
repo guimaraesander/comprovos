@@ -21,6 +21,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("123456");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // ✅ Evita navegar no meio do render com navigate(), usando Navigate é mais seguro
   if (isAuthenticated) {
@@ -87,14 +88,34 @@ export function LoginPage() {
 
           <label>
             Senha
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="********"
-              required
-              autoComplete="current-password"
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="********"
+                required
+                autoComplete="current-password"
+                style={{ width: '100%' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  color: '#666'
+                }}
+              >
+                {showPassword ? "Esconder" : "Mostrar"}
+              </button>
+            </div>
           </label>
 
           {errorMessage && <div className="auth-error">{errorMessage}</div>}
