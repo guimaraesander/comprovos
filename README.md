@@ -259,3 +259,31 @@ Uso acadêmico.
 ### Evidencia de infraestrutura
 - Banco em PostgreSQL externamente gerenciado via DATABASE_URL (fora do container).
 
+## Evidencias de entrega e qualidade
+
+- CI/CD (GitHub Actions): https://github.com/guimaraesander/comprovos/actions/workflows/ci.yml
+- Backend em producao (deploy): https://comprovos-backend.onrender.com
+- Frontend em producao (deploy): https://comprovos.vercel.app
+- Swagger: https://comprovos-backend.onrender.com/api-docs
+- Health check: https://comprovos-backend.onrender.com/health
+- Relatorio tecnico: docs/relatorio-tecnico.md
+- Video demonstracao: docs/video-demonstracao.md
+
+### Ambiente por contexto
+
+- development: NODE_ENV=development, logs com stack em resposta e stacktrace no JSON de erro.
+- test: NODE_ENV=test para testes automatizados.
+- production: NODE_ENV=production, retorno de erro interno sem detalhes sensiveis.
+
+### Comandos de qualidade
+
+- Cobertura backend: `cd backend && npm run test:coverage`
+- Cobertura frontend: `cd ../frontend && npm run test:coverage`
+
+## Checklist de evidencias recomendadas
+
+- Commit de `package-lock` e CI executando com sucesso.
+- Screenshots de deploy (frontend e backend) no ar.
+- Evidencias de branching e issues/kanban no GitHub (se aplicavel).
+- Relatorio tecnico em `docs/relatorio-tecnico.md` e video em `docs/video-demonstracao.md`.
+

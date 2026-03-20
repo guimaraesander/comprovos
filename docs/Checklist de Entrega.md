@@ -25,7 +25,7 @@
 - [x] Remover fallback de `JWT_SECRET` inseguro no codigo (`backend/src/config/env.ts`) e falhar explicitamente quando nao configurado.
 - [x] Protecao de rotas autenticadas no backend e frontend.
 - [x] Tratamento centralizado de erro no backend.
-- [ ] Separacao melhorada dev/prod (comportamento de erro e secrets por ambiente, sem fallback permissivo).
+- [x] Separacao melhorada dev/prod (comportamento de erro e secrets por ambiente, sem fallback permissivo).
 
 ### 5) Testes e Qualidade
 - [x] Testes de API no backend (Vitest + Supertest).
@@ -44,8 +44,8 @@
 ### 7) Entregaveis
 - [x] Repositorio com codigo, Dockerfile e README detalhado.
 - [x] Diagrama/descricao de arquitetura presente em `docs/arquitetura-diagrama.md`.
-- [ ] Relatorio tecnico (ate 6 paginas) ainda nao encontrado.
-- [ ] Video de ate 7 minutos ainda nao incluido.
+- [x] Relatorio tecnico (ate 6 paginas) em `docs/relatorio-tecnico.md`.
+- [ ] Video de ate 7 minutos ainda nao incluido (`docs/video-demonstracao.md` aguardando link).
 
 ---
 
@@ -54,7 +54,7 @@
 2. [x] Remover fallback de `JWT_SECRET` e exigir configuracao explicita.
 3. [x] Etapa de deploy automatico no CI/CD para backend jÃ¡ adicionada no workflow.
 4. [x] Adicionar prova de deploy do frontend/backend no README (links ativos).
-5. [ ] Incluir itens faltantes de entrega academica: relatorio tecnico e video.
+5. [ ] Incluir itens faltantes de entrega academica: registrar link do video.
 
 ## Plano de correcao em 7 tarefas (ordem de execucao)
 

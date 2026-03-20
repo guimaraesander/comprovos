@@ -27,7 +27,7 @@ function getSafeStatusCode(error: HttpError) {
 
 function getErrorResponseMessage(statusCode: number, error: HttpError, isDev: boolean) {
   if (error instanceof ZodError) {
-    return "Erro de validação dos dados enviados.";
+    return "Erro de validacao dos dados enviados.";
   }
 
   if (statusCode >= 500 && !isDev) {
@@ -89,6 +89,7 @@ export function errorHandler(
   }
 
   if (error instanceof ZodError) {
+    responseBody.code = "VALIDATION_ERROR";
     responseBody.details = getValidationDetails(error);
   }
 
