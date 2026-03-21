@@ -203,20 +203,44 @@ npm run build
 - Lista de requisitos: `docs/checklist-requisitos.md`
 - Checklist de entrega: `docs/Checklist de Entrega.md`
 - Evidência de vídeo: `docs/video-demonstracao.md`
+- GitHub Projects / Kanban: <https://github.com/users/guimaraesander/projects/1/views/1>
 
 ## 13. Colaboração
 
-Fluxo utilizado no repositório:
+A organização do trabalho foi registrada no GitHub por meio de **Issues** e de um **quadro Kanban no GitHub Projects**.
 
-- `main` recebe a versão estável final.
-- Desenvolvimento por branches de tarefa, integrado pela equipe conforme rotina interna.
-- CI/CD validações antes da integração final.
+Fluxo adotado no repositório:
+- `main` concentra a versão estável final do projeto.
+- Desenvolvimento realizado em **branches por funcionalidade**.
+- Integração das alterações por meio de merges e pull requests.
+- Uso de **commits semânticos** para facilitar rastreabilidade.
+- Registro das tarefas e entregas em **Issues** vinculadas ao board Kanban.
+
+Estrutura do board:
+- **Todo**
+- **In Progress**
+- **Done**
+
+No Kanban foram organizadas as principais frentes do projeto, como:
+- frontend
+- backend
+- autenticação
+- banco de dados
+- documentação da API
+- testes automatizados
+- deploy em nuvem
+- ajustes finais de documentação e entrega
+
+### Links de evidência
+- **Repositório:** <https://github.com/guimaraesander/comprovos>
+- **Kanban / GitHub Projects:** <https://github.com/users/guimaraesander/projects/1/views/1>
 
 ## 14. Observações
 
 - Nunca versionar arquivos `.env` reais.
 - Mantenha variáveis de ambiente explícitas no ambiente de execução.
-- Atualize as evidências finais do projeto antes da entrega acadêmica (e.g., vídeo com URL pública).
+- Atualize as evidências finais do projeto antes da entrega acadêmica.
+- Caso o board Kanban permaneça privado, anexar também print atualizado no relatório técnico.
 
 ## 15. Licença
 

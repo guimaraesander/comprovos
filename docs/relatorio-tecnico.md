@@ -86,10 +86,22 @@ Desenvolver e implantar uma aplicação web para controle de ordens de serviço 
 
 ## 4.6 Colaboração (itens acadêmicos)
 
-- Repositório público: **pendente (validar no repositório final)**
-- Branches por funcionalidade: **pendente (validar histórico)**
-- Commits semânticos: **pendente (validar histórico)**
-- Issues/Kanban no GitHub: **pendente (validar no repositório final)**
+- Repositório público: **atendido**
+- Branches por funcionalidade: **atendido**
+- Commits semânticos: **atendido**
+- Issues/Kanban no GitHub: **atendido**
+
+### Evidência de organização do trabalho
+
+Para registrar a organização das atividades do projeto, foi utilizado o GitHub com **Issues** e **GitHub Projects (Kanban)**. O quadro foi estruturado com as colunas **Todo**, **In Progress** e **Done**, permitindo visualizar as tarefas pendentes, em andamento e concluídas.
+
+As principais entregas do projeto foram distribuídas no board, incluindo frontend, backend, autenticação, persistência com banco de dados, documentação da API, testes automatizados, deploy em nuvem e ajustes finais de documentação.
+
+Como a maior parte do desenvolvimento técnico já estava concluída no momento da consolidação acadêmica, as entregas implementadas foram posicionadas em **Done**, mantendo em andamento apenas os ajustes finais da documentação e da entrega. Dessa forma, o projeto passou a apresentar evidência visual e verificável da organização do fluxo de trabalho no GitHub.
+
+### Links de validação
+- Repositório: <https://github.com/guimaraesander/comprovos>
+- GitHub Projects (Kanban): <https://github.com/users/guimaraesander/projects/1/views/1>
 
 ## 5) Evidências técnicas
 
@@ -99,6 +111,7 @@ Desenvolver e implantar uma aplicação web para controle de ordens de serviço 
 - Frontend em produção: <https://comprovos.vercel.app>
 - API docs: <https://comprovos-backend.onrender.com/api-docs>
 - Health check: <https://comprovos-backend.onrender.com/health>
+- Board Kanban / GitHub Projects: <https://github.com/users/guimaraesander/projects/1/views/1>
 
 ## 6) Decisões técnicas e riscos controlados
 
@@ -120,13 +133,23 @@ Este ponto está documentado como limitação técnica e não impede o funcionam
   - credenciais inválidas (mensagem amigável);
   - indisponibilidade de backend (mensagem de conexão).
 
-## 8) Conclusão
+## 8) Demonstração em vídeo
+
+A entrega prevê um vídeo de demonstração com até 7 minutos, contemplando:
+
+- arquitetura da solução
+- funcionamento do sistema
+- deploy em nuvem
+- pipeline e/ou testes automatizados
+
+O material de vídeo deve ser registrado e referenciado em `docs/video-demonstracao.md`.
+
+## 9) Conclusão
 
 A solução cumpre os requisitos técnicos centrais da disciplina, com arquitetura em nuvem, backend em container, documentação de API, autenticação protegida, rotinas de teste e pipeline com CI/CD.
 
 Pontos pendentes para encerramento acadêmico final:
 
-- comprovar formalmente aspectos de governança no GitHub (colaboração e workflow público);
 - incluir vídeo de demonstração (até 7 min) com link em `docs/video-demonstracao.md`.
 
 Portanto, no que tange ao funcionamento técnico e requisitos arquiteturais, o projeto encontra-se apto para entrega.
