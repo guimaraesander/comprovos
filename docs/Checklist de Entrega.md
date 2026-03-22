@@ -1,4 +1,6 @@
-## Checklist de Entrega â€” Desenvolvimento de Software em Nuvem
+## Checklist de Entrega - Desenvolvimento de Software em Nuvem
+
+Documento de apoio interno para acompanhamento da entrega. O documento final consolidado e `docs/relatorio-tecnico.md`.
 
 ### 1) Requisitos Funcionais (Doc original)
 - [x] Autenticacao e autorizacao (JWT + roles ADMIN/TECNICO no backend e rota protegida no frontend).
@@ -30,12 +32,7 @@
 ### 5) Testes e Qualidade
 - [x] Testes de API no backend (Vitest + Supertest).
 - [x] Testes no frontend (login, rota protegida, dashboard).
-- [x] Evidencia de execucao (logs de pipeline com sucesso, opcional: cobertura).
-
-### Evidencias de Validacao da Tarefa 5
-- [x] backend passou em GitHub Actions (Install, Build and Test) com sucesso.
-- [x] frontend passou em GitHub Actions (Install, Build and Test) com sucesso.
-- [x] deploy executado no CI com status de sucesso (webhooks acionados conforme configuracao).
+- [x] Evidencia de execucao (logs de pipeline com sucesso e cobertura gerada).
 
 ### 6) Colaboracao e Organizacao
 - [ ] Fluxo publico no GitHub, branches por funcionalidade e commits semanticos (validacao pendente no repositorio remoto).
@@ -45,52 +42,14 @@
 - [x] Repositorio com codigo, Dockerfile e README detalhado.
 - [x] Diagrama/descricao de arquitetura presente em `docs/arquitetura-diagrama.md`.
 - [x] Relatorio tecnico (ate 6 paginas) em `docs/relatorio-tecnico.md`.
-- [ ] Video de ate 7 minutos ainda nao incluido (`docs/video-demonstracao.md` aguardando URL publica da gravação).
+- [ ] Video de ate 7 minutos ainda nao incluido (`docs/video-demonstracao.md` aguardando URL publica da gravacao).
 
 ---
 
 ## Pendencias criticas (fechar antes da entrega final)
+
 1. [x] Ajustar tratamento de erro do Zod para retornar `400` de validacao de forma consistente.
 2. [x] Remover fallback de `JWT_SECRET` e exigir configuracao explicita.
-3. [x] Etapa de deploy automatico no CI/CD para backend jÃ¡ adicionada no workflow.
+3. [x] Etapa de deploy automatico no CI/CD para backend adicionada no workflow.
 4. [x] Adicionar prova de deploy do frontend/backend no README (links ativos).
-5. [ ] Registrar link da demonstração em `docs/video-demonstracao.md` (e opcionalmente no README), e validar se segue o tempo limite.
-
-## Plano de correcao em 7 tarefas (ordem de execucao)
-
-Objetivo: transformar os itens pendentes em entregaveis aprovaveis com menor risco e maximo impacto.
-
-1) [x] Validar erros de entrada no backend (Alta, esforco: 1h)
-- Consolidar `ZodError` no `backend/src/middlewares/error-handler.ts`.
-- Retornar `400` com `details` de validacao para `parse` e parametros obrigatorios.
-- Garantir resposta padronizada de erro para frontend/testes.
-
-2) [x] Ajustar parametros obrigatorios com erro de cliente (Media, esforco: 30min)
-- Revisar `backend/src/shared/http/get-required-param.ts` e `backend/src/utils/get-required-param.ts`.
-- Trocar erro generico por `HttpError.badRequest`.
-- Definir mensagem e codigo consistentes.
-
-3) [x] Endurecer segredos de ambiente (Alta, esforco: 30min)
-- Alterar `backend/src/config/env.ts` para falhar quando `JWT_SECRET` faltar.
-- Remover fallback inseguro.
-- Documentar no README variaveis obrigatorias e exemplo minimo.
-
-4) [x] Incluir deploy automatico no CI/CD (Alta, esforco: 1h30)
-- Workflow de deploy atualizado com gatilho de deploy e webhooks.
-- Secrets definidos no GitHub Actions.
-- Publicar e validar URL final no README.
-
-5) [x] Finalizar evidencia de deploy front-end e back-end (Media, esforco: 45min)
-- Confirmar `frontend/vercel.json` e registrar URL de producao no README.
-- Registrar link ativo do endpoint backend em producao e smoke test de `/health` ou `/api/docs`.
-
-6) [x] Ajustar testes frontend para a implementacao atual (Media, esforco: 1h)
-- Revisar `frontend/tests/DashboardPage.test.tsx`.
-- Sincronizar os asserts com o componente real (texto/botoes existentes).
-- Executar `npm run test:run` em frontend e backend.
-
-7) [ ] Entregaveis academicos finais (Baixa, esforco: 2h)
-- Atualizar relatório técnico com os resultados finais de CI/CD e evidência dos links de produção.
-- Gravar video de ate 7 minutos com arquitetura, funcionalidades e deploy.
-- Atualizar checklist de entrega com status final dos itens 7 e links.
-
+5. [ ] Registrar link da demonstracao em `docs/video-demonstracao.md` (e opcionalmente no README), e validar se segue o tempo limite.

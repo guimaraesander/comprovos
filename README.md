@@ -1,6 +1,6 @@
 ﻿# ComprovOS
 
-Sistema web para assistência técnica de computadores, substituindo o comprovante em papel por um fluxo digital de cadastro de clientes, equipamentos, ordens de serviço, autenticação e acompanhamento em nuvem.
+Sistema web para assistência técnica de computadores, substituindo o comprovante em papel por um fluxo digital de cadastro de clientes,ordens de serviço, autenticação e acompanhamento em nuvem.
 
 ## 1. Objetivo
 
@@ -235,13 +235,6 @@ No Kanban foram organizadas as principais frentes do projeto, como:
 - **Repositório:** <https://github.com/guimaraesander/comprovos>
 - **Kanban / GitHub Projects:** <https://github.com/users/guimaraesander/projects/1/views/1>
 
-## 14. Observações
-
-- Nunca versionar arquivos `.env` reais.
-- Mantenha variáveis de ambiente explícitas no ambiente de execução.
-- Atualize as evidências finais do projeto antes da entrega acadêmica.
-- Caso o board Kanban permaneça privado, anexar também print atualizado no relatório técnico.
-
-## 15. Licença
+## 14. Licença
 
 Uso acadêmico.

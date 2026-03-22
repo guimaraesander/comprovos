@@ -1,43 +1,52 @@
-# Checklist de Requisitos — ComprovOS
+# Checklist de Requisitos - ComprovOS
 
-## Funcionais (Obrigatórios)
-- [x] Autenticação e autorização
+Documento de apoio para validacao rapida dos requisitos da disciplina.
+
+## Funcionais (Obrigatorios)
+
+- [x] Autenticacao e autorizacao
 - [x] API RESTful documentada (Swagger/OpenAPI)
 - [x] CRUD completo
-- [x] Validação de dados no back-end
+- [x] Validacao de dados no back-end
 - [x] Logs de acesso e erro
 
-## Arquitetura Técnica (Obrigatórios)
+## Arquitetura Tecnica (Obrigatorios)
+
 - [x] Front-end com framework moderno (React)
 - [x] Deploy do front-end em nuvem
 - [x] Back-end REST containerizado com Docker
 - [x] Deploy do back-end em nuvem
-- [x] Banco gerenciado em nuvem (persistência fora do container)
+- [x] Banco gerenciado em nuvem (persistencia fora do container)
 
-## DevOps (Obrigatórios)
+## DevOps (Obrigatorios)
+
 - [x] Docker no back-end
 - [x] CI/CD com build
 - [x] CI/CD com testes automatizados
-- [x] CI/CD com deploy automático (ou workflow preparado)
+- [x] CI/CD com deploy automatico (ou workflow preparado)
 
-## Segurança e Boas Práticas
-- [x] Variáveis de ambiente
-- [x] Proteção de rotas
+## Seguranca e Boas Praticas
+
+- [x] Variaveis de ambiente
+- [x] Protecao de rotas
 - [x] Tratamento de erros
-- [x] Separação dev/prod (quando possível)
+- [x] Separacao dev/prod (quando possivel)
 
 ## Testes / Qualidade
+
 - [x] Testes de API no back-end
 - [x] Pelo menos 1 teste no front-end
-- [x] Evidência de execução / cobertura
+- [x] Evidencia de execucao / cobertura
 
-## Colaboração
-- [ ] Repositório público no GitHub
+## Colaboracao
+
+- [ ] Repositorio publico no GitHub
 - [ ] Branches por funcionalidade
-- [ ] Commits semânticos
+- [ ] Commits semanticos
 - [ ] Issues/Kanban (GitHub Projects)
 
-## Entregáveis
+## Entregaveis
+
 - [x] README detalhado
-- [x] Relatório técnico (máx. 6 páginas)
-- [ ] Vídeo até 7 minutos
+- [x] Relatorio tecnico (max. 6 paginas)
+- [ ] Video ate 7 minutos

@@ -1,5 +1,7 @@
 # Roteiro para demonstracao em video (max 7 minutos)
 
+Documento de apoio para a gravacao. Insira neste arquivo o link publico do video final.
+
 ## O que deve aparecer
 
 1. Apresentacao rapida do problema e objetivo (30s)
@@ -28,4 +30,4 @@
 - [ ] Video com no maximo 7 minutos
 - [ ] Audio e tela legivel
 - [ ] URL inserida nesta secao (substituir texto exemplo)
-- [ ] Commit para registrar o link no repositório
+- [ ] Commit para registrar o link no repositorio

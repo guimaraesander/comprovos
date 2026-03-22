@@ -1,29 +1,36 @@
-# Arquitetura — ComprovOS
+# Arquitetura - ComprovOS
 
-## Visão Geral
-O ComprovOS é um sistema web para gerenciamento de ordens de serviço (OS) e acompanhamento de manutenção de equipamentos em assistência técnica.
+Documento de apoio. A versao consolidada para entrega esta em `docs/relatorio-tecnico.md`.
 
-## Arquitetura em Nuvem (Camadas)
-- **Frontend (React + Vite)**: interface web para equipe técnica (painel interno) e, opcionalmente, acompanhamento do cliente.
-- **Backend (Node.js + Express)**: API REST com autenticação, CRUDs, validações, logs e documentação Swagger.
-- **Banco de Dados (PostgreSQL + Prisma)**: persistência em serviço gerenciado na nuvem (Supabase/Neon).
+## Visao Geral
+
+O ComprovOS e um sistema web para gerenciamento de ordens de servico, clientes e acompanhamento de manutencao em assistencia tecnica.
+
+## Arquitetura em Nuvem
+
+- **Frontend (React + Vite):** interface web para a equipe interna, publicada na Vercel.
+- **Backend (Node.js + Express):** API REST com autenticacao, CRUDs, validacoes, logs e documentacao Swagger/OpenAPI, publicada no Render com Docker.
+- **Banco de dados (PostgreSQL + Prisma):** persistencia em servico gerenciado na nuvem, acessado por `DATABASE_URL`.
 
 ## Fluxo Principal
-1. Técnico realiza login no sistema.
-2. Frontend envia credenciais para a API.
-3. API autentica com JWT.
-4. Técnicos gerenciam clientes, equipamentos e ordens de serviço.
-5. Dados são persistidos no PostgreSQL.
-6. API expõe documentação em `/docs`.
 
-## Deploy (Implementado)
-- **Frontend**: https://comprovos.vercel.app (Vercel)
-- **Backend**: https://comprovos-backend.onrender.com (Render com Docker)
-- **Banco**: PostgreSQL gerenciado via `DATABASE_URL` (Supabase/Neon conforme ambiente)
+1. O usuario realiza login no frontend.
+2. O frontend envia as credenciais para a API.
+3. A API autentica o usuario com JWT.
+4. A aplicacao permite gerenciar clientes, usuarios e ordens de servico.
+5. Os dados sao persistidos no PostgreSQL.
+6. A documentacao da API fica disponivel em `/api-docs`.
 
-## Segurança e Qualidade
-- JWT para autenticação
-- Rotas protegidas por perfil
-- Variáveis de ambiente
-- Logs de acesso e erro
-- Testes automatizados
+## Enderecos de Producao
+
+- **Frontend:** <https://comprovos.vercel.app>
+- **Backend:** <https://comprovos-backend.onrender.com>
+- **API Docs:** <https://comprovos-backend.onrender.com/api-docs>
+
+## Qualidade e Seguranca
+
+- Autenticacao com JWT.
+- Protecao de rotas autenticadas.
+- Uso de variaveis de ambiente.
+- Logs de acesso e erro.
+- Testes automatizados no backend e no frontend.
