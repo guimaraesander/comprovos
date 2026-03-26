@@ -1,5 +1,20 @@
 # Relatório Técnico: Sistema ComprovOS
 
+**Fundação Edson Queiroz**  
+**Tecnólogo em Análise e Desenvolvimento de Sistemas**
+
+- Anderson Guimarães Almino - Matrícula: 2425080
+- Antonio Anderson Ferreira dos Santos - Matrícula: 2415502
+- Atila Alves Góis - Matrícula: 2415587
+- João Victor Demetrio Lino - Matrícula: 2415523
+- Larissa Silva Fernandes - Matrícula: 2416657
+- Luan Wesley Cândido Silva - Matrícula: 2425130
+
+- Disciplina: Desenvolvimento de Software em Nuvem
+- Professor: Ildo Ramos
+- Local: Fortaleza-CE
+- Ano: 2026
+
 ## Sumário
 
 1. [Visão Geral do Sistema](#1-visão-geral-do-sistema)
@@ -7,37 +22,31 @@
 3. [Tecnologias e Serviços Utilizados](#3-tecnologias-e-serviços-utilizados)
 4. [Estratégia de Deploy e CI/CD](#4-estratégia-de-deploy-e-cicd)
 5. [Papéis e Contribuições da Equipe](#5-papéis-e-contribuições-da-equipe)
-   - 5.1 [Evidência de Organização do Trabalho](#51-evidência-de-organização-do-trabalho)
-   - 5.2 [Links de Validação](#52-links-de-validação)
-   - 5.3 [Evidências Técnicas](#53-evidências-técnicas)
-6. [Dificuldades Encontradas e Soluções Adotadas](#6-dificuldades-encontradas-e-soluções-adotadas)
+6. [Evidências Técnicas](#6-evidências-técnicas)
+7. [Dificuldades Encontradas e Soluções Adotadas](#7-dificuldades-encontradas-e-soluções-adotadas)
+8. [Execução, Validação e Resultados](#8-execução-validação-e-resultados)
+9. [Atendimento aos Requisitos da Proposta](#9-atendimento-aos-requisitos-da-proposta)
+10. [Conclusão](#10-conclusão)
 
 ---
 
 ## 1. Visão Geral do Sistema
 
-O presente relatório descreve as especificações técnicas, a arquitetura e a organização do projeto *ComprovOS*, um sistema estruturado para a gestão de ordens de serviço e clientes de assistência técnica.
+O ComprovOS é um sistema web voltado à gestão de ordens de serviço, clientes e fluxo operacional de assistência técnica. A solução foi concebida em arquitetura cliente-servidor, com interface acessível via navegador, backend exposto por API RESTful e persistência em banco de dados relacional gerenciado em nuvem. O objetivo do projeto é substituir controles manuais por um processo digital com maior rastreabilidade, padronização e segurança operacional.
 
-O ComprovOS é uma aplicação completa composta por *frontend*, *backend* e um *banco de dados relacional*. O sistema foi projetado para controlar fluxos operacionais que incluem autenticação de usuários via login, dashboards interativos, gestão de clientes e controle de ordens de serviço. A interface é acessível pelo navegador e a comunicação com o servidor é realizada por meio de uma API documentada via Swagger.
+Em termos funcionais, a aplicação contempla autenticação e autorização por perfis, operações CRUD, validação de dados no back-end, documentação da API via Swagger/OpenAPI e registro de logs de acesso e erro. O sistema também foi estruturado para atender aos requisitos da disciplina relacionados a computação em nuvem, containerização do back-end, testes automatizados, boas práticas de segurança e automação do processo de entrega.
 
 ---
 
 ## 2. Diagrama de Arquitetura em Nuvem
 
-A arquitetura do sistema foi distribuída para separar responsabilidades entre cada camada da aplicação:
+A arquitetura do ComprovOS distribui responsabilidades entre apresentação, serviços, persistência e automação. O frontend React é publicado na Vercel; o backend Node.js/Express é empacotado com Docker e executado no Render; os dados permanecem em PostgreSQL gerenciado no Supabase, fora do container da aplicação; e o GitHub Actions centraliza o pipeline de integração contínua e deploy.
 
-| Camada | Serviço | Descrição |
-|---|---|---|
-| *Frontend* | Vercel | Hospedagem de aplicações estáticas e frameworks modernos |
-| *Backend* | Render | Hospedagem com suporte a ambientes Node.js |
-| *Banco de Dados* | PostgreSQL (Supabase) | SGBD relacional com persistência robusta de dados |
-| *Documentação da API* | Swagger (/api-docs) | Centralização da documentação para integração entre camadas |
-
-O diagrama abaixo representa a comunicação entre os serviços em nuvem e o fluxo de entrega contínua adotado no projeto:
+Figura 1 - Arquitetura em nuvem do sistema ComprovOS.
 
 ```mermaid
 flowchart LR
-    U[Usuário / Equipe interna]
+    U[Usuario / Equipe interna]
     F[Frontend<br/>React + Vite<br/>Vercel]
     B[Backend<br/>Node.js + Express<br/>Render + Docker]
     D[(PostgreSQL<br/>Supabase)]
@@ -58,180 +67,106 @@ flowchart LR
 
 ## 3. Tecnologias e Serviços Utilizados
 
-### Ambiente de Desenvolvimento
-
-- *Runtime:* Node.js 22 LTS
-- *Gerenciador de pacotes:* npm
-- *Controle de versão:* Git e GitHub
-- *IDE:* VS Code com extensões: Prisma, ESLint, Prettier, Thunder Client, DotENV e GitLens
-
-### Stack Técnica
-
-| Camada | Tecnologias |
-|---|---|
-| *Frontend* | React, Vite, TypeScript, Tailwind CSS |
-| *Backend* | Express, Prisma, JWT, Vitest, Supertest |
-| *Banco de Dados* | PostgreSQL com Prisma ORM |
-| *Documentação* | Swagger / OpenAPI |
-| *CI/CD* | GitHub Actions |
-| *Infraestrutura* | Docker, Render, Vercel, Supabase |
+- Frontend: React, Vite, TypeScript, Tailwind CSS, Vitest e React Testing Library.
+- Backend: Node.js, Express, TypeScript, Prisma ORM, JWT, Vitest e Supertest.
+- Banco de dados: PostgreSQL em serviço gerenciado (Supabase), garantindo persistência fora do container.
+- Documentação de API: Swagger/OpenAPI disponível em endpoint próprio para consulta e validação dos contratos da API.
+- Infraestrutura em nuvem: Vercel para publicação do frontend e Render para execução do backend containerizado.
+- DevOps e colaboração: Git, GitHub, GitHub Actions, Issues e GitHub Projects (Kanban).
+- Ferramentas de desenvolvimento: VS Code, Thunder Client, ESLint, Prettier, DotENV e GitLens.
 
 ---
 
 ## 4. Estratégia de Deploy e CI/CD
 
-### Fluxo de Branches
+A estratégia de entrega foi organizada com uso de branches por funcionalidade, integração por pull requests e promoção para a branch principal após validação. O back-end foi empacotado com Docker, atendendo ao requisito de execução em ambiente containerizado, enquanto o banco de dados permaneceu desacoplado em serviço gerenciado, garantindo persistência fora do container.
 
-
-feature/nome-da-branch  →  main-teste  →  main
-   (desenvolvimento)       (integração)   (produção)
-
-
-- *main* — branch final de produção
-- *main-teste* — branch intermediária para integração e validação de funcionalidades
-- *feature/nome-da-branch* — branches individuais de desenvolvimento; alterações enviadas via Pull Request para main-teste
-
-### Pipeline de CI/CD (GitHub Actions)
-
-O GitHub Actions automatiza as seguintes etapas:
-
-1. Instalação de dependências
-2. Execução dos comandos install e build (frontend e backend)
-3. Geração do cliente Prisma
-4. Execução dos testes automatizados
-
-> O deploy automático ocorre *apenas quando o pipeline está sem falhas*.
-
-### Segurança e Boas Práticas
-
-- Uso de *variáveis de ambiente* para credenciais e configurações sensíveis
-- *GitHub Secrets* para proteção de credenciais na pipeline
-- Proteção de rotas autenticadas com *JWT*
-- Controle de acesso por perfis (*RBAC*)
-- Separação entre ambientes de *desenvolvimento* e *produção*
-- Tratamento adequado de erros em todas as camadas
+O pipeline de CI/CD foi implementado com GitHub Actions e automatiza as etapas de instalação de dependências, geração do Prisma Client, build do backend e do frontend, execução de testes automatizados e disparo de deploy quando a validação é concluída com sucesso. Em produção, o frontend é publicado na Vercel e o backend no Render, mantendo credenciais e parâmetros críticos em variáveis de ambiente, como `DATABASE_URL`, `JWT_SECRET`, `PORT` e `NODE_ENV`. Essa estratégia contribui para a segurança, repetibilidade do processo e redução do risco de promover código não validado para produção.
 
 ---
 
 ## 5. Papéis e Contribuições da Equipe
 
-### João Lino — Deploy & Arquitetura em Nuvem
+Conforme a proposta da atividade, a equipe foi estruturada em seis funções técnicas claras, cobrindo arquitetura em nuvem, DevOps, back-end, front-end, segurança, qualidade e documentação. As contribuições consolidadas foram as seguintes:
 
-> Responsável pela publicação em produção e configuração de URLs e variáveis de ambiente.
+- João Victor Demetrio Lino - Arquiteto de Software em Nuvem / Deploy: responsável pela publicação do sistema em produção, configuração de URLs e variáveis de ambiente e adequação do backend containerizado no Render, integrando frontend, backend e banco em nuvem.
+- Anderson Guimarães Almino - Engenheiro de DevOps / CI/CD: responsável pela criação e manutenção do fluxo automatizado no GitHub Actions, integrando build, testes e deploy, além da configuração segura de segredos utilizados na publicação.
+- Antonio Anderson Ferreira dos Santos - Desenvolvedor Backend e QA: responsável pela implementação de testes da API, validações do backend, logs de acesso e erro e robustez das rotas de autenticação e das operações CRUD.
+- Atila Alves Góis - Desenvolvedor Frontend e UI: responsável pelos testes de interface, estados de loading e erro, responsividade do dashboard, correções visuais e integração da camada de apresentação com a API.
+- Luan Wesley Cândido Silva - Segurança: responsável pela implementação e validação do controle de acesso por perfis, proteção de rotas e revisão do comportamento de autenticação nas camadas de frontend e backend.
+- Larissa Silva Fernandes - Gestão e Documentação: responsável pela organização do Kanban, consolidação do relatório técnico, coleta de evidências da entrega e apoio à demonstração final do projeto.
 
-Realizou o deploy oficial do ComprovOS utilizando serviços gerenciados: *Vercel* (Frontend), *Render* (Backend em containers) e *Supabase* (PostgreSQL). Configurou as variáveis de ambiente diretamente nos painéis das plataformas e apontou a API do frontend para o ambiente de produção.
+### 5.1 Evidência de organização do trabalho
 
-*Principais desafios:* ajuste do estágio de build no Render, incluindo comandos de instalação, geração do cliente Prisma e resolução de conflitos no package-lock.json. Entrega consolidada no *PR #4* (branch main-teste).
-
----
-
-### Anderson Guimarães — DevOps & CI/CD
-
-> Responsável pela criação e manutenção dos fluxos automatizados no GitHub Actions.
-
-Estruturou a pipeline de CI/CD via GitHub Actions (ci.yml), automatizando instalação, build e testes do frontend e backend. Configurou os *GitHub Secrets* e ajustou a geração do cliente Prisma para compatibilidade com o schema do banco. O fluxo foi integrado ao deploy automático da Vercel e Render.
-
-*Entrega:* pipeline aprovada ("verde") na branch main-teste.
+A organização do desenvolvimento foi registrada em repositório público no GitHub, com uso de branches por funcionalidade, commits semânticos e GitHub Projects no formato Kanban. O quadro foi estruturado com colunas como `Todo`, `In Progress` e `Done`, permitindo acompanhar atividades de frontend, backend, autenticação, persistência, testes, deploy e documentação. Essa estrutura reforçou a colaboração, a rastreabilidade e a visibilidade do progresso da equipe ao longo da execução do projeto.
 
 ---
 
-### Anderson Ferreira — Backend & QA
+## 6. Evidências Técnicas
 
-> Focado na criação de testes para a API, implementação de logs de acesso e erros.
+- Repositório público: <https://github.com/guimaraesander/comprovos>
+- Workflow de CI/CD: `.github/workflows/ci.yml` e histórico de execuções em GitHub Actions
+- Frontend em produção: <https://comprovos.vercel.app>
+- Backend em produção: <https://comprovos-backend.onrender.com>
+- Documentação da API: <https://comprovos-backend.onrender.com/api-docs>
+- Health check do backend: <https://comprovos-backend.onrender.com/health>
+- Quadro Kanban / GitHub Projects: <https://github.com/users/guimaraesander/projects/1/views/1>
+- Entregáveis complementares no repositório: `Dockerfile`, arquivos de configuração e `README` detalhado
 
-Implementou uma suíte de *testes de integração* com Vitest e Supertest, cobrindo rotas de integridade (/health), autenticação JWT e segurança da API. Estruturou testes autossuficientes para o CRUD de Ordens de Serviço com criação dinâmica de dependências (como clientes) antes das validações. Reforçou a resiliência com *logs de erro* para falhas de conexão com o Supabase.
-
-*Entrega:* *PR #6* (branch main-teste).
-
----
-
-### Atila Gois — Frontend & UX/UI
-
-> Responsável pelos testes de interface, correção de bugs visuais e melhoria na experiência do usuário.
-
-Implementou a interface do ComprovOS utilizando *Vitest* e *React Testing Library* para validar fluxos críticos de login e navegação protegida via JWT. Desenvolveu estados de loading e mensagens de erro dinâmicas, refinou a responsividade do Dashboard com *Tailwind CSS* e garantiu a consistência via gestão de estados globais e armazenamento seguro de tokens.
-
-*Entrega:* branch feature/frontend-tests-interface.
+A demonstração em vídeo compõe a entrega final como item complementar ao relatório técnico, conforme a proposta da disciplina, apresentando arquitetura, funcionamento do sistema, deploy em nuvem e pipeline/testes automatizados.
 
 ---
 
-### Luan Cândido — Segurança & RBAC
+## 7. Dificuldades Encontradas e Soluções Adotadas
 
-> Implementação de autorização por perfis de acesso e proteção de rotas.
+- Ajuste do build e geração do Prisma Client no ambiente de deploy: padronização dos scripts de instalação e build, além da validação automática no pipeline de CI/CD.
+- Integração entre frontend e backend em ambientes distintos: uso explícito de variáveis de ambiente e validação da comunicação entre camadas durante testes e publicação.
+- Garantia de qualidade antes do deploy: adoção de testes automatizados no backend com Vitest e Supertest e no frontend com Vitest e React Testing Library.
+- Segurança e controle de acesso: implementação de autenticação JWT, proteção de rotas, autorização por perfis e respostas HTTP adequadas para falhas de autenticação.
+- Colaboração sem conflitos: uso de branches por funcionalidade, atualização da branch de integração antes de pull requests e padronização com commits semânticos.
+- Proteção de credenciais: manutenção de arquivos `.env` fora do versionamento e uso de secrets nas plataformas de deploy e no GitHub Actions.
 
-Implementou e validou o *controle de acesso baseado em perfis (RBAC)* em todas as camadas do sistema. Refinou os middlewares de autenticação e autorização (auth.ts e role.ts) no backend para proteger endpoints críticos, garantindo respostas HTTP adequadas para acessos não autorizados ou tokens JWT inválidos. Revisou o componente ProtectedRoute no frontend para bloqueio de páginas restritas e redirecionamento correto.
-
-*Entrega:* branch feature/autorizacao-perfis-seguranca.
-
----
-
-### Larissa Fernandes — Gestão & Documentação
-
-> Organização do Kanban (GitHub Issues), elaboração deste relatório e produção de evidências de funcionamento.
-
-Organizou o fluxo de trabalho via *GitHub Issues* e *Kanban*, garantindo visibilidade e rastreabilidade ao progresso da equipe. Consolidou as contribuições técnicas neste relatório e produziu o roteiro e o *vídeo de demonstração* do ComprovOS em produção, reunindo evidências visuais de deploy (Vercel/Render) e da pipeline de CI/CD.
-
-*Entrega:* branch feature/relatorio-video-kanban.
+Dessa forma, o ComprovOS atende aos elementos centrais exigidos pela atividade: arquitetura em nuvem em camadas, backend containerizado, banco gerenciado fora do container, documentação de API, segurança básica, testes automatizados, automação com CI/CD e organização colaborativa do desenvolvimento.
 
 ---
 
-### 5.1 Evidência de Organização do Trabalho
+## 8. Execução, Validação e Resultados
 
-O projeto utilizou *GitHub Issues* e *GitHub Projects (Kanban)* para registrar a organização das atividades. O quadro foi estruturado com as colunas:
+A validação do ComprovOS foi conduzida em três frentes complementares: execução local durante o desenvolvimento, verificação automatizada no pipeline de CI/CD e conferência do comportamento do sistema em produção. Essa estratégia permitiu avaliar não apenas o funcionamento isolado de cada camada, mas também a integração entre frontend, backend, banco de dados e documentação de API em ambiente real de nuvem.
 
-- *Todo* — tarefas pendentes
-- *In Progress* — tarefas em andamento
-- *Done* — tarefas concluídas
+No backend, a equipe verificou autenticação, autorização, validações de entrada, rotas protegidas, tratamento de erros e consistência das operações sobre os módulos centrais do sistema. A presença do endpoint de health check e da documentação Swagger/OpenAPI facilitou a inspeção técnica das rotas e a conferência dos contratos de requisição e resposta antes da publicação.
 
-As principais entregas (frontend, backend, autenticação, persistência, documentação da API, testes, deploy e ajustes finais) foram distribuídas no board. Como a maior parte do desenvolvimento técnico já estava concluída no momento da consolidação acadêmica, as entregas implementadas foram posicionadas em *Done*, mantendo em andamento apenas os ajustes finais.
+No frontend, foram validados fluxo de login, acesso às telas protegidas, consumo da API, renderização de dados, estados de carregamento e mensagens de erro. A publicação na Vercel permitiu confirmar o comportamento da interface com a API em produção, reduzindo discrepâncias entre o ambiente local e o ambiente disponibilizado para demonstração.
 
-### 5.2 Links de Validação
+Como resultado, o projeto passou a contar com uma cadeia de entrega mais confiável: o código é versionado no GitHub, validado por build e testes automatizados e somente então promovido para os serviços em nuvem. Esse fluxo reforça a rastreabilidade das alterações, a repetibilidade da implantação e a redução de falhas manuais no processo de entrega.
 
-| Recurso | Link |
-|---|---|
-| *Repositório* | https://github.com/guimaraesander/comprovos |
-| *GitHub Projects (Kanban)* | https://github.com/users/guimaraesander/projects/1/views/1 |
+### 8.1 Evidências de execução e validação
 
-### 5.3 Evidências Técnicas
-
-| Recurso | Link / Caminho |
-|---|---|
-| *Workflow CI/CD* | .github/workflows/ci.yml |
-| *Deploy e validação* | https://github.com/guimaraesander/comprovos/actions/workflows/ci.yml |
-| *Backend em produção* | https://comprovos-backend.onrender.com |
-| *Frontend em produção* | https://comprovos.vercel.app |
-| *Documentação da API* | https://comprovos-backend.onrender.com/api-docs |
-| *Health check* | https://comprovos-backend.onrender.com/health |
-| *Board Kanban* | https://github.com/users/guimaraesander/projects/1/views/1 |
+As evidências técnicas reunidas ao longo do projeto incluem a execução do workflow de integração contínua, a disponibilidade do frontend e do backend em produção, a documentação da API, o health check do servidor e o histórico de colaboração por branches, pull requests, issues e quadro Kanban. Esses elementos demonstram que o projeto não ficou restrito ao desenvolvimento local, mas foi efetivamente implantado, validado e organizado conforme a proposta da disciplina.
 
 ---
 
-## 6. Dificuldades Encontradas e Soluções Adotadas
+## 9. Atendimento aos Requisitos da Proposta
 
-Durante o desenvolvimento foram identificados riscos técnicos e estabelecidos protocolos preventivos:
+A tabela a seguir sintetiza como os principais requisitos acadêmicos e técnicos da atividade foram atendidos no ComprovOS, relacionando implementação prática e evidências observáveis no repositório e no ambiente publicado.
 
-### Vazamento de Credenciais
-*Problema:* risco de exposição de chaves sensíveis no repositório.  
-*Solução:* proibição de envio de arquivos .env ao GitHub via .gitignore; compartilhamento seguro via canais internos da equipe.
-
-### Conflitos de Código
-*Problema:* com múltiplos integrantes, o risco de conflitos em branches era alto.  
-*Solução:* obrigatoriedade de atualizar a branch pessoal com a main-teste antes de abrir qualquer Pull Request.
-
-### Padronização de Histórico
-*Problema:* commits genéricos dificultavam o rastreio de alterações.  
-*Solução:* implementação do padrão *Conventional Commits* (ex: feat:, fix:, test:).
-
-### Quebra de Funcionalidades
-*Problema:* novas atualizações podiam afetar o sistema existente.  
-*Solução:* regra de validar login e dashboard antes de cada integração final.
-
-### Integração Frontend ↔ Backend em Ambientes Distintos
-*Problema:* inconsistência nas variáveis de ambiente entre frontend e backend.  
-*Solução:* centralização da configuração por ambiente e validação das variáveis críticas (URL da API, credenciais do banco, autenticação) antes da publicação.
-
-### Geração do Prisma Client e Compatibilidade do Build
-*Problema:* falhas na geração do Prisma Client durante deploy e pipeline de CI.  
-*Solução:* etapas de instalação, build, geração do cliente Prisma e testes explicitadas no fluxo automatizado, com scripts do projeto alinhados.
+| Item solicitado | Como foi atendido | Evidência principal |
+|---|---|---|
+| Frontend em nuvem | Aplicação web desenvolvida com React, Vite e TypeScript, publicada em ambiente de produção na Vercel. | URL pública do frontend |
+| Backend containerizado | API Node.js/Express empacotada com Docker e executada no Render, atendendo ao requisito de containerização. | Deploy do backend e Dockerfile |
+| Persistência em nuvem | Banco PostgreSQL gerenciado no Supabase, mantendo os dados fora do container da aplicação. | `DATABASE_URL` e serviço gerenciado |
+| Documentação da API | Rotas documentadas e expostas via Swagger/OpenAPI em endpoint próprio para consulta técnica. | Endpoint `/api-docs` |
+| CI/CD com validação | GitHub Actions executando instalação, geração do Prisma Client, build e testes antes do deploy. | Workflow `ci.yml` e histórico de execuções |
+| Segurança básica | Uso de variáveis de ambiente, autenticação JWT, rotas protegidas e controle de acesso por perfis. | Secrets, middleware e validações |
+| Colaboração da equipe | Fluxo com branches por funcionalidade, pull requests, commits semânticos, issues e quadro Kanban. | Repositório GitHub e Projects |
+| Entrega acadêmica | Relatório técnico, evidências de deploy, documentação e vídeo de demonstração preparados como entregáveis. | Relatório, links e material de apoio |
 
 ---
+
+## 10. Conclusão
+
+O desenvolvimento do ComprovOS permitiu aplicar, de forma integrada, os conceitos centrais da disciplina de Desenvolvimento de Software em Nuvem: arquitetura cliente-servidor em camadas, deploy em serviços distintos, containerização do backend, persistência em banco gerenciado, documentação de API, automação de build e testes e integração contínua com publicação em nuvem. O projeto também evidenciou a importância de tratar infraestrutura, segurança, versionamento e qualidade como partes inseparáveis do ciclo de desenvolvimento.
+
+Além de atender aos requisitos formais da atividade, o projeto consolidou uma base técnica coerente para uso real em um cenário de assistência técnica, com foco em rastreabilidade operacional, segurança de acesso, organização do fluxo de trabalho e previsibilidade de deploy. A combinação entre frontend publicado, backend containerizado, workflow automatizado e documentação acessível torna o sistema compreensível tanto para avaliação acadêmica quanto para continuidade futura do desenvolvimento pela equipe.
+
+Em seu estado atual, o ComprovOS já demonstra maturidade suficiente para validar a proposta acadêmica, pois reúne camadas bem definidas, integração funcional entre interface, API e banco de dados, evidências públicas de execução e um processo reproduzível de entrega. Assim, o resultado final não se limita a um protótipo conceitual, mas apresenta um sistema implementado, publicado e sustentado por práticas compatíveis com um ambiente moderno de software em nuvem.
