@@ -1,6 +1,6 @@
 ﻿# ComprovOS
 
-Sistema web para assistência técnica de computadores, substituindo o comprovante em papel por um fluxo digital de cadastro de clientes,ordens de serviço, autenticação e acompanhamento em nuvem.
+Sistema web para assistência técnica de computadores, substituindo o comprovante em papel por um fluxo digital de cadastro de clientes, ordens de serviço, autenticação e acompanhamento em nuvem.
 
 ## 1. Objetivo
 
@@ -57,12 +57,8 @@ comprovos/
 │  ├─ package.json
 │  └─ vite.config.ts
 ├─ docs/
-│  ├─ Checklist de Entrega.md
-│  ├─ checklist-requisitos.md
 │  ├─ Desenvolvimento de Software em Nuvem.md
-│  ├─ arquitetura-diagrama.md
 │  ├─ relatorio-tecnico.md
-│  └─ video-demonstracao.md
 ├─ .github/
 │  └─ workflows/
 │     └─ ci.yml
@@ -199,10 +195,7 @@ npm run build
 ## 12. Documentação e evidências
 
 - Relatório técnico: `docs/relatorio-tecnico.md`
-- Diagrama: `docs/arquitetura-diagrama.md`
-- Lista de requisitos: `docs/checklist-requisitos.md`
-- Checklist de entrega: `docs/Checklist de Entrega.md`
-- Evidência de vídeo: `docs/video-demonstracao.md`
+- Proposta da disciplina: `docs/Desenvolvimento de Software em Nuvem.md`
 - GitHub Projects / Kanban: <https://github.com/users/guimaraesander/projects/1/views/1>
 
 ## 13. Colaboração
