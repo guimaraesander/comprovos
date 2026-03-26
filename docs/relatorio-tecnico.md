@@ -18,7 +18,7 @@
 
 O presente relatório descreve as especificações técnicas, a arquitetura e a organização do projeto *ComprovOS*, um sistema estruturado para a gestão de ordens de serviço e clientes de assistência técnica.
 
-O ComprovOS é uma aplicação completa composta por *frontend, **backend* e um *banco de dados relacional*. O sistema foi projetado para controlar fluxos operacionais que incluem autenticação de usuários via login, dashboards interativos, gestão de clientes e controle de ordens de serviço. A interface é acessível pelo navegador e a comunicação com o servidor é realizada por meio de uma API documentada via Swagger.
+O ComprovOS é uma aplicação completa composta por *frontend*, *backend* e um *banco de dados relacional*. O sistema foi projetado para controlar fluxos operacionais que incluem autenticação de usuários via login, dashboards interativos, gestão de clientes e controle de ordens de serviço. A interface é acessível pelo navegador e a comunicação com o servidor é realizada por meio de uma API documentada via Swagger.
 
 ---
 
@@ -32,6 +32,27 @@ A arquitetura do sistema foi distribuída para separar responsabilidades entre c
 | *Backend* | Render | Hospedagem com suporte a ambientes Node.js |
 | *Banco de Dados* | PostgreSQL (Supabase) | SGBD relacional com persistência robusta de dados |
 | *Documentação da API* | Swagger (/api-docs) | Centralização da documentação para integração entre camadas |
+
+O diagrama abaixo representa a comunicação entre os serviços em nuvem e o fluxo de entrega contínua adotado no projeto:
+
+```mermaid
+flowchart LR
+    U[Usuário / Equipe interna]
+    F[Frontend<br/>React + Vite<br/>Vercel]
+    B[Backend<br/>Node.js + Express<br/>Render + Docker]
+    D[(PostgreSQL<br/>Supabase)]
+    A[Swagger / API Docs]
+    C[GitHub Actions<br/>CI/CD]
+    G[GitHub Repository]
+
+    U --> F
+    F -->|HTTPS /api| B
+    B --> D
+    B --> A
+    G --> C
+    C -->|build, testes e deploy| F
+    C -->|build, testes e deploy| B
+```
 
 ---
 
@@ -148,7 +169,7 @@ Implementou e validou o *controle de acesso baseado em perfis (RBAC)* em todas a
 
 > Organização do Kanban (GitHub Issues), elaboração deste relatório e produção de evidências de funcionamento.
 
-Organizou o fluxo de trabalho via *GitHub Issues e Kanban, garantindo visibilidade e rastreabilidade ao progresso da equipe. Consolidou as contribuições técnicas neste relatório e produziu o roteiro e o **vídeo de demonstração* do ComprovOS em produção, reunindo evidências visuais de deploy (Vercel/Render) e da pipeline de CI/CD.
+Organizou o fluxo de trabalho via *GitHub Issues* e *Kanban*, garantindo visibilidade e rastreabilidade ao progresso da equipe. Consolidou as contribuições técnicas neste relatório e produziu o roteiro e o *vídeo de demonstração* do ComprovOS em produção, reunindo evidências visuais de deploy (Vercel/Render) e da pipeline de CI/CD.
 
 *Entrega:* branch feature/relatorio-video-kanban.
 
