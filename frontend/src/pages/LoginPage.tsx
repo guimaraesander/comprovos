@@ -39,26 +39,30 @@ export function LoginPage() {
       await login({ email, password });
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      // âœ… Sem resposta da API: servidor fora do ar / rede / CORS
-      if (axios.isAxiosError(error) && !error.response) {
-        setErrorMessage("NÃ£o foi possÃ­vel conectar ao servidor.");
-      }
-      // âœ… Erro com resposta da API
-      else if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
-        const apiMessage = (error.response?.data as { message?: string } | undefined)?.message;
+      const axiosLike = error as {
+        response?: {
+          status?: number;
+          data?: { message?: string };
+        };
+      };
+
+      if (axiosLike.response) {
+        const status = axiosLike.response.status;
+        const apiMessage = axiosLike.response.data?.message;
 
         if (status === 401) {
-          setErrorMessage("Email ou senha invÃ¡lidos.");
+          setErrorMessage("Email ou senha inválidos.");
         } else if (status === 400) {
-          setErrorMessage("Dados invÃ¡lidos. Verifique email e senha.");
+          setErrorMessage("Dados inválidos. Verifique email e senha.");
         } else {
           setErrorMessage(apiMessage || "Falha ao realizar login.");
         }
+      } else if (axios.isAxiosError(error)) {
+        setErrorMessage("Não foi possível conectar ao servidor.");
       } else if (error instanceof Error) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage("Falha ao realizar login.");
+        setErrorMessage("Não foi possível conectar ao servidor.");
       }
     } finally {
       setIsSubmitting(false);
@@ -118,7 +122,11 @@ export function LoginPage() {
             </div>
           </label>
 
-          {errorMessage && <div className="auth-error">{errorMessage}</div>}
+          {errorMessage && (
+            <div className="auth-error" role="alert" aria-live="polite" data-testid="login-error">
+              {errorMessage}
+            </div>
+          )}
 
           <button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Entrando..." : "Entrar"}

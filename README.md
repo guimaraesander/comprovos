@@ -1,46 +1,47 @@
-# ComprovOS
+﻿# ComprovOS
 
-Sistema web para assistência técnica de computadores, substituindo o comprovante em papel por um fluxo digital com cadastro de clientes, equipamentos, ordens de serviço, autenticação, acompanhamento de status e execução em nuvem.
+Sistema web para assistência técnica de computadores, substituindo o comprovante em papel por um fluxo digital de cadastro de clientes,ordens de serviço, autenticação e acompanhamento em nuvem.
 
-## Objetivo do projeto
+## 1. Objetivo
 
-O **ComprovOS** foi desenvolvido como trabalho da disciplina de **Desenvolvimento de Software em Nuvem**, com foco em:
+Projeto desenvolvido para a disciplina **Desenvolvimento de Software em Nuvem**, com foco em:
 
-- front-end web
-- API REST
-- autenticação e autorização
-- banco de dados em nuvem
-- documentação técnica
-- práticas de CI/CD
-- organização colaborativa com Git e GitHub
+- Front-end web moderno com React.
+- API REST em Node.js/Express.
+- Autenticação e autorização com perfis.
+- Banco PostgreSQL gerenciado na nuvem.
+- Documentação de API com Swagger/OpenAPI.
+- CI/CD com testes automatizados e deploy.
 
-## Stack utilizada
+## 2. Stack
 
 ### Front-end
+
 - React
 - Vite
 - TypeScript
+- Axios
+- React Router
 
 ### Back-end
+
 - Node.js
 - Express
 - TypeScript
 - Prisma ORM
 - JWT
 - Swagger / OpenAPI
+- Vitest + Supertest
 
-### Banco de dados
-- PostgreSQL
-- Supabase
+### Infraestrutura
 
-### Ferramentas
-- Git / GitHub
+- Docker
 - GitHub Actions
-- VS Code
-- Thunder Client
-- Docker (backend)
+- Vercel
+- Render
+- PostgreSQL em serviço gerenciado
 
-## Estrutura do projeto
+## 3. Estrutura do projeto
 
 ```text
 comprovos/
@@ -52,238 +53,188 @@ comprovos/
 │  └─ Dockerfile
 ├─ frontend/
 │  ├─ src/
-│  ├─ .env
+│  ├─ .env.example
 │  ├─ package.json
 │  └─ vite.config.ts
 ├─ docs/
-├─ .env.example
+│  ├─ Checklist de Entrega.md
+│  ├─ checklist-requisitos.md
+│  ├─ Desenvolvimento de Software em Nuvem.md
+│  ├─ arquitetura-diagrama.md
+│  ├─ relatorio-tecnico.md
+│  └─ video-demonstracao.md
+├─ .github/
+│  └─ workflows/
+│     └─ ci.yml
 ├─ package.json
 └─ README.md
 ```
 
-## Funcionalidades principais
+## 4. Funcionalidades
 
-- login com autenticação JWT
-- rotas protegidas no front-end
-- API REST com documentação Swagger
-- dashboard interno
-- cadastro e gerenciamento de clientes
-- cadastro e acompanhamento de ordens de serviço
-- seed inicial com usuário de teste
-- integração com banco PostgreSQL em nuvem
+- Login com autenticação JWT.
+- Rotas protegidas no frontend por perfil.
+- Dashboard interno.
+- Cadastro e gerenciamento de clientes.
+- Cadastro e acompanhamento de ordens de serviço.
+- Controle de transição de status e orçamentos.
+- Documentação interativa da API (`/api-docs`).
 
-## Requisitos para rodar localmente
-
-Instale no computador:
+## 5. Pré-requisitos
 
 - Git
-- Node.js 22 LTS
+- Node.js 22 LTS (ou versão compatível)
 - npm
-- VS Code
 - PostgreSQL
-- navegador atualizado
 
-Também é recomendado instalar no VS Code:
+## 6. Variáveis de ambiente
 
-- Prisma
-- ESLint
-- Prettier - Code formatter
-- Thunder Client
-- DotENV
-- GitLens
+### Backend (`backend/.env`)
 
-## Clonando o projeto
+Copie a partir de `.env.example`:
 
 ```bash
-git clone https://github.com/guimaraesander/comprovos.git
-cd comprovos
-code .
+cp backend/.env.example backend/.env
 ```
 
-## Variáveis de ambiente
-
-### Backend: `backend/.env`
-
-Use um arquivo nesse formato:
+Exemplo:
 
 ```env
-DATABASE_URL="postgresql://SEU_USUARIO:SUA_SENHA@SEU_HOST:5432/postgres"
+DATABASE_URL="postgresql://SEU_USUARIO:SUA_SENHA@SEU_HOST:5432/seubanco"
 JWT_SECRET="troque-por-uma-chave-segura"
 PORT=3333
 NODE_ENV=development
 ```
 
-### Front-end: `frontend/.env`
+### Frontend (`frontend/.env`)
+
+Copie a partir de `.env.example`:
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+Exemplo:
 
 ```env
 VITE_API_URL=http://localhost:3333/api
 ```
 
-## Instalação das dependências
+## 7. Instalação
 
 ### Backend
+
 ```bash
 cd backend
 npm install
 ```
 
-### Front-end
+### Frontend
+
 ```bash
 cd ../frontend
 npm install
 ```
 
-## Executando o projeto
+## 8. Execução local
 
-### 1. Subir o back-end
+Em terminais separados:
+
 ```bash
+# terminal 1
 cd backend
 npm run dev
-```
 
-### 2. Subir o front-end
-Em outro terminal:
-```bash
+# terminal 2
 cd frontend
 npm run dev
 ```
 
-## Endereços locais
+Acesse:
 
-- Front-end: `http://localhost:5173`
-- Back-end: `http://localhost:3333`
-- Swagger: `http://localhost:3333/api-docs`
+- Frontend: <http://localhost:5173>
+- Backend: <http://localhost:3333>
+- API docs: <http://localhost:3333/api-docs>
 
-## Usuário de teste
+## 9. Usuários de teste
 
-Ambiente de desenvolvimento:
+Ambiente de demonstração:
 
-- **Email:** `admin@comprovos.com`
-- **Senha:** `123456`
+- **ADM:** `admin@comprovos.com` / `123456`
+- **TÉCNICO:** `tecnico@comprovos.com` / `123456`
 
-## Scripts principais
+## 10. Testes e qualidade
 
-### Backend
+### Scripts úteis
+
+No backend:
+
 ```bash
-npm run dev
+npm run test:run
+npm run test:coverage
 npm run build
-npm run prisma:generate
-npm run prisma:push
-npm run seed
 ```
 
-### Front-end
+No frontend:
+
 ```bash
-npm run dev
+npm run test:run
+npm run test:coverage
 npm run build
-npm run preview
-npm run test
 ```
 
-## Fluxo de branches da equipe
+### Pipeline
 
-A equipe vai trabalhar com uma branch intermediária de integração chamada:
+- CI/CD configurado em `.github/workflows/ci.yml`
+- Trabalho com jobs de backend, frontend e deploy
+- Evidência principal: <https://github.com/guimaraesander/comprovos/actions/workflows/ci.yml>
 
-- `main-teste`
+## 11. Deploy
 
-Fluxo combinado:
+- Frontend (Vercel): <https://comprovos.vercel.app>
+- Backend (Render): <https://comprovos-backend.onrender.com>
+- Swagger: <https://comprovos-backend.onrender.com/api-docs>
+- Health check: <https://comprovos-backend.onrender.com/health>
 
-1. `main` fica reservada para a versão final.
-2. Cada integrante cria sua branch a partir de `main-teste`.
-3. Cada tarefa é enviada primeiro para `main-teste`.
-4. Após validação geral, o conteúdo consolidado vai para `main`.
+## 12. Documentação e evidências
 
-Exemplo:
+- Relatório técnico: `docs/relatorio-tecnico.md`
+- Diagrama: `docs/arquitetura-diagrama.md`
+- Lista de requisitos: `docs/checklist-requisitos.md`
+- Checklist de entrega: `docs/Checklist de Entrega.md`
+- Evidência de vídeo: `docs/video-demonstracao.md`
+- GitHub Projects / Kanban: <https://github.com/users/guimaraesander/projects/1/views/1>
 
-```bash
-git checkout main
-git pull origin main
-git checkout -b main-teste
-git push -u origin main-teste
-```
+## 13. Colaboração
 
-Exemplo de branch de integrante:
+A organização do trabalho foi registrada no GitHub por meio de **Issues** e de um **quadro Kanban no GitHub Projects**.
 
-```bash
-git checkout main-teste
-git pull origin main-teste
-git checkout -b feature/nome-da-tarefa
-git push -u origin feature/nome-da-tarefa
-```
+Fluxo adotado no repositório:
+- `main` concentra a versão estável final do projeto.
+- Desenvolvimento realizado em **branches por funcionalidade**.
+- Integração das alterações por meio de merges e pull requests.
+- Uso de **commits semânticos** para facilitar rastreabilidade.
+- Registro das tarefas e entregas em **Issues** vinculadas ao board Kanban.
 
-## Itens acadêmicos da proposta
+Estrutura do board:
+- **Todo**
+- **In Progress**
+- **Done**
 
-O projeto foi planejado para atender aos pontos da disciplina:
-
-- aplicação web com front-end e API
-- autenticação e autorização
-- documentação de API
-- banco de dados em nuvem
-- Docker
-- CI/CD
+No Kanban foram organizadas as principais frentes do projeto, como:
+- frontend
+- backend
+- autenticação
+- banco de dados
+- documentação da API
+- testes automatizados
 - deploy em nuvem
-- documentação técnica
-- colaboração via GitHub
+- ajustes finais de documentação e entrega
 
-## O que ainda deve ser concluído pela equipe
+### Links de evidência
+- **Repositório:** <https://github.com/guimaraesander/comprovos>
+- **Kanban / GitHub Projects:** <https://github.com/users/guimaraesander/projects/1/views/1>
 
-As tarefas restantes foram separadas em 6 frentes e estão detalhadas no arquivo:
-
-- `PLANO_BRANCHES_EQUIPE.md`
-
-Também foi criado um guia completo de instalação e fluxo de trabalho para os integrantes:
-
-- `GUIA_EQUIPE_INSTALACAO_E_FLUXO.md`
-
-## Observações importantes
-
-- nunca subir arquivos `.env` com credenciais reais para o GitHub
-- sempre atualizar a branch-base antes de começar uma tarefa
-- sempre testar localmente antes de enviar para `main-teste`
-- a `main` só deve receber código revisado e validado
-
-## Autores / Equipe
-
-Preencher com os nomes completos dos integrantes da equipe.
-
-## Licença
+## 14. Licença
 
 Uso acadêmico.
-
-## Deploy em producao (links ativos)
-- Frontend (Vercel): https://comprovos.vercel.app
-- Backend (Render): https://comprovos-backend.onrender.com
-- Swagger (backend): https://comprovos-backend.onrender.com/api-docs
-- Health check: https://comprovos-backend.onrender.com/health
-
-### Evidencia de infraestrutura
-- Banco em PostgreSQL externamente gerenciado via DATABASE_URL (fora do container).
-
-## Evidencias de entrega e qualidade
-
-- CI/CD (GitHub Actions): https://github.com/guimaraesander/comprovos/actions/workflows/ci.yml
-- Backend em producao (deploy): https://comprovos-backend.onrender.com
-- Frontend em producao (deploy): https://comprovos.vercel.app
-- Swagger: https://comprovos-backend.onrender.com/api-docs
-- Health check: https://comprovos-backend.onrender.com/health
-- Relatorio tecnico: docs/relatorio-tecnico.md
-- Video demonstracao: docs/video-demonstracao.md
-
-### Ambiente por contexto
-
-- development: NODE_ENV=development, logs com stack em resposta e stacktrace no JSON de erro.
-- test: NODE_ENV=test para testes automatizados.
-- production: NODE_ENV=production, retorno de erro interno sem detalhes sensiveis.
-
-### Comandos de qualidade
-
-- Cobertura backend: `cd backend && npm run test:coverage`
-- Cobertura frontend: `cd ../frontend && npm run test:coverage`
-
-## Checklist de evidencias recomendadas
-
-- Commit de `package-lock` e CI executando com sucesso.
-- Screenshots de deploy (frontend e backend) no ar.
-- Evidencias de branching e issues/kanban no GitHub (se aplicavel).
-- Relatorio tecnico em `docs/relatorio-tecnico.md` e video em `docs/video-demonstracao.md`.
-
