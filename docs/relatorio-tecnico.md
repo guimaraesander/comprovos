@@ -11,7 +11,7 @@
 - Luan Wesley Cândido Silva - Matrícula: 2425130
 
 - Disciplina: Desenvolvimento de Software em Nuvem
-- Professor: Ildo Ramos
+- Professor: Ildo Ramos Vieira
 - Local: Fortaleza-CE
 - Ano: 2026
 
